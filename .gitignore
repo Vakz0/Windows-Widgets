@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-electron/
+release/
+tools/cpu-temp/bin/
+tools/cpu-temp/obj/
+tools/cpu-temp/publish/
+*.log
+*.sys
+.env
+config.json
+.DS_Store
+Thumbs.db
+*.local

@@ -1,0 +1,19 @@
+{
+  "notionToken": "COLLER_ICI_LE_SECRET_INTEGRATION",
+  "databaseId": "https://www.notion.so/3a7c67f21872804889cace3d58d51606",
+  "properties": {
+    "title": "Tâche",
+    "date": "Date",
+    "tag": "État",
+    "status": "Importance",
+    "urgency": "Urgence",
+    "doneCheckbox": ""
+  },
+  "filters": {
+    "hideCompleted": true,
+    "completedStatusValues": []
+  },
+  "refreshIntervalSeconds": 90,
+  "launchAtStartup": true,
+  "demoMode": false
+}

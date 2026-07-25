@@ -1,0 +1,65 @@
+{
+  "name": "windows-widgets",
+  "version": "1.0.0",
+  "description": "Widgets Windows 11 — Notion tâches/calendrier + monitoring systray",
+  "main": "dist-electron/main.js",
+  "author": "Bastien",
+  "license": "MIT",
+  "scripts": {
+    "build:temp": "dotnet publish tools/cpu-temp/cpu-temp.csproj -c Release -o tools/cpu-temp/publish --nologo",
+    "dev": "npm run build:temp && vite",
+    "build": "npm run build:temp && tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "app": "electron .",
+    "shortcuts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/creer-raccourcis.ps1",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.bastien.windows-widgets",
+    "productName": "Windows Widgets",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "tools/cpu-temp/publish",
+        "to": "cpu-temp"
+      }
+    ]
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "systeminformation": "^5.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.6"
+  }
+}
