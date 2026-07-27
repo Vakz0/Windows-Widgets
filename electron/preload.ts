@@ -31,6 +31,6 @@ const api = {
   },
 }
 
-contextBridge.exposeInMainWorld('widgets', api)
+contextBridge.exposeInMainWorld('lattice', api)
 
-export type WidgetsApi = typeof api
+export type LatticeApi = typeof api

@@ -9,7 +9,7 @@ export function useTasks() {
 
   useEffect(() => {
     let alive = true
-    const api = window.widgets
+    const api = window.lattice
 
     void (async () => {
       try {
@@ -40,7 +40,7 @@ export function useTasks() {
   const refresh = async () => {
     setLoading(true)
     try {
-      const next = await window.widgets.refreshTasks()
+      const next = await window.lattice.refreshTasks()
       setTasks(next)
       setError(null)
     } catch (err) {

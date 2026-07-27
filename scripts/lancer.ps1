@@ -37,7 +37,7 @@ if (-not (Test-Path $electron)) {
   Add-Type -AssemblyName PresentationFramework
   [System.Windows.MessageBox]::Show(
     "Electron est introuvable.`nLance une fois Preparer-lancement.bat (npm install).",
-    'Windows Widgets',
+    'Lattice',
     'OK',
     'Error'
   ) | Out-Null
@@ -48,7 +48,7 @@ if (Needs-Rebuild) {
   Add-Type -AssemblyName PresentationFramework | Out-Null
   [System.Windows.MessageBox]::Show(
     "Mise a jour detectee.`nL'application va se recompiler puis demarrer.",
-    'Windows Widgets',
+    'Lattice',
     'OK',
     'Information'
   ) | Out-Null
@@ -57,7 +57,7 @@ if (Needs-Rebuild) {
   if ($build.ExitCode -ne 0) {
     [System.Windows.MessageBox]::Show(
       "Echec du build. Ouvre un terminal et lance : npm run build",
-      'Windows Widgets',
+      'Lattice',
       'OK',
       'Error'
     ) | Out-Null

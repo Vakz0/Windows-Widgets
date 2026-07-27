@@ -69,7 +69,7 @@ export function createTrayMenuController(
     const tempRunning = isTempServiceRunning()
 
     return Menu.buildFromTemplate([
-      { label: 'Windows Widgets', enabled: false },
+      { label: 'Lattice', enabled: false },
       { label: trayStatusLabel(), enabled: false },
       { type: 'separator' },
       {
@@ -203,7 +203,7 @@ export function createTrayMenuController(
       },
       { type: 'separator' },
       {
-        label: 'Quitter Windows Widgets',
+        label: 'Quitter Lattice',
         click: () => app.quit(),
       },
     ])

@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>cpu-temp</AssemblyName>
-    <RootNamespace>WindowsWidgets.CpuTemp</RootNamespace>
+    <RootNamespace>LatticeDesk.CpuTemp</RootNamespace>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
