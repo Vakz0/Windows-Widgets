@@ -3,6 +3,10 @@
 # Lattice
 
 <p align="center">
+  <img src="assets/brand/banner.png" alt="Lattice — Widgets bureau composables pour Windows" width="800" />
+</p>
+
+<p align="center">
   <a href="https://skillicons.dev">
     <img src="https://skillicons.dev/icons?i=typescript,react,electron" alt="TypeScript, React, Electron" />
   </a>
@@ -15,7 +19,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
 </p>
 
-> Widgets bureau composables pour Windows — garder le Tracker Notion et les stats système sur le bureau, sans quitter le flux de travail.
+> Widgets bureau composables pour Windows — plateforme shell : activez uniquement les widgets dont vous avez besoin (Notion, monitoring, …).
 
 ## Table des matières
 
@@ -30,6 +34,7 @@
 
 ## Pourquoi Lattice
 
+- **Plateforme d’abord** — une installation neuve est un shell vide ; ajoutez calendrier, tâches, monitoring (et futurs widgets) depuis le catalogue.
 - **Notion sur le bureau** — calendrier et tâches ouvertes restent visibles à côté du travail, pas enfouis dans un onglet navigateur.
 - **Monitoring systray** — CPU, RAM et température CPU optionnelle en un clic, toujours au premier plan quand on en a besoin.
 - **Peu de friction** — un raccourci lance l’app ; elle se recompile seule si le code a changé.
@@ -37,34 +42,46 @@
 
 ## Fonctionnalités
 
+### Catalogue de widgets
+
+Lattice est une **plateforme** : aucun widget bureau tant qu’on ne les active pas. Ouvrir **Catalogue des widgets…** depuis le systray (ou clic gauche sur le tray si le monitoring est désactivé) pour activer / désactiver les widgets intégrés. Clé config : `widgets` dans `config.json` (`{}` à l’install). Les configs legacy sans `widgets` gardent calendrier + tâches activés.
+
+### Paramètres
+
+Écran dans la fenêtre catalogue (onglet **Paramètres**, ou systray → **Paramètres…**) pour brancher Notion (token + base + mapping des propriétés), éditer `refreshIntervalSeconds`, `launchAtStartup` et `demoMode`, ouvrir `config.json`, et afficher la version de l’app.
+
 ### Calendrier
 
-Vue semaine (lun. → dim.) avec les tâches Notion datées en cartes. Clic sur une carte pour ouvrir le panneau détail (description = corps de la page Notion, lien vers Notion).
+Vue semaine (lun. → dim.) avec les tâches Notion datées en cartes (base principale + sources secondaires optionnelles). Clic sur une carte pour ouvrir le panneau détail (description = corps de page ou propriété mappée, lien vers Notion). Nécessite d’activer le widget calendrier.
 
 ### Tâches
 
-Liste des tâches ouvertes avec pastilles (État), importance et urgence. Même panneau détail que le calendrier. Les éléments terminés peuvent être masqués via la config.
+Liste des tâches ouvertes avec pastilles, importance et urgence. Les tâches de sources secondaires affichent un libellé source. Même panneau détail que le calendrier. Les éléments terminés peuvent être masqués via la config. Nécessite d’activer le widget tâches.
+
+### Sources Notion secondaires
+
+Fusion optionnelle avec les tâches d’une autre base Notion filtrées par relation projet (`projectSources` dans `config.json`). Ces tâches affichent un libellé source discret dans les widgets calendrier et tâches. Voir [connexion Notion](docs/fr/notion.md#4-sources-secondaires-optionnelles-projectsources).
 
 ### Monitoring
 
-Jauge en anneaux pour CPU %, RAM % et température (°C). Ouverture depuis le systray en pop-up always-on-top. La température utilise un helper optionnel élevé (`tools/cpu-temp`, LibreHardwareMonitorLib).
+Jauge en anneaux pour CPU %, RAM % et température (°C). Ouverture depuis le systray en pop-up always-on-top. La température utilise un helper optionnel élevé (`tools/cpu-temp`, LibreHardwareMonitorLib). Nécessite d’activer le widget monitoring.
 
 ### Menu systray
 
-- Afficher / masquer les widgets calendrier et tâches
-- Ouvrir le monitoring
-- Rafraîchir les tâches Notion
-- Ouvrir le fichier config
-- Activer / désactiver le service température
+- Ouvrir le catalogue de widgets
+- Ouvrir les paramètres (catalogue → Paramètres)
+- Afficher / masquer les widgets bureau activés (cases à cocher à plat)
+- Ouvrir le monitoring (s’il est activé)
+- Rafraîchir Notion / basculer la température / ouvrir la config (selon les widgets)
 - Lancer au démarrage de Windows
 
 ### Mode démo
 
-Sans token Notion valide, Lattice tourne en mode démo avec des données d’exemple pour tester l’UI tout de suite. Régler `demoMode` ou coller de vrais identifiants dans `config.json` — voir [connexion Notion](docs/fr/notion.md).
+Sans token Notion valide, Lattice tourne en mode démo avec des données d’exemple pour tester l’UI (une fois les widgets Notion activés). Brancher les identifiants dans **Paramètres** ou les coller dans `config.json` — voir [connexion Notion](docs/fr/notion.md).
 
 ### Rafraîchissement adaptatif
 
-Les modes d’alimentation (`active` / `idle` / `sleep`) ajustent le polling Notion et stats selon la visibilité des widgets et l’inactivité système.
+Les modes d’alimentation (`active` / `idle` / `sleep`) ajustent le polling Notion et stats selon la visibilité des widgets et l’inactivité système. Le poll Notion ne tourne que si au moins un widget dépendant de Notion est activé.
 
 > Ancien nom : `windows-widgets` → `lattice-desk`. La config AppData existante est migrée automatiquement au premier lancement.
 
@@ -73,13 +90,14 @@ Les modes d’alimentation (`active` / `idle` / `sleep`) ajustent le polling Not
 **Prérequis :** Windows 10/11, [Node.js 20+](https://nodejs.org/), et (pour la température) un [.NET SDK](https://dotnet.microsoft.com/download) une fois au build.
 
 1. Double-cliquer `Preparer-lancement.bat` (une fois, ou après une mise à jour) — installe les deps, build, crée les raccourcis Bureau / menu Démarrer.
-2. Lancer le raccourci **Lattice**.
-3. Brancher Notion → [docs/fr/notion.md](docs/fr/notion.md) (English: [docs/en/notion.md](docs/en/notion.md)).
-4. Optionnel : systray → **Lancer au démarrage de Windows**.
+2. Lancer le raccourci **Lattice** (icône tray seule sur une install neuve).
+3. Systray → **Catalogue des widgets…** → activer Calendrier, Tâches et/ou Monitoring.
+4. Systray → **Paramètres…** → brancher Notion (token + URL de la base). Détails : [docs/fr/notion.md](docs/fr/notion.md) (English: [docs/en/notion.md](docs/en/notion.md)).
+5. Optionnel : systray → **Lancer au démarrage de Windows**.
 
 Le raccourci recompile automatiquement si les sources ont changé depuis le dernier build.
 
-La config vit dans `%APPDATA%\lattice-desk\config.json` (systray → **Notion** → **Ouvrir le fichier config**). En développement, un `config.json` à la racine du projet fonctionne aussi.
+La config vit dans `%APPDATA%\lattice-desk\config.json` (tray → **Paramètres** → **Ouvrir config.json**, ou sous **Notion** si un widget Notion est activé). En développement, un `config.json` à la racine du projet fonctionne aussi.
 
 ## Pour les développeurs
 
@@ -144,11 +162,12 @@ flowchart LR
 | Développement | [development.md](docs/en/development.md) | [development.md](docs/fr/development.md) |
 | Configuration | [configuration.md](docs/en/configuration.md) | [configuration.md](docs/fr/configuration.md) |
 | Connexion Notion | [notion.md](docs/en/notion.md) | [notion.md](docs/fr/notion.md) |
+| Identité visuelle | [brand.md](docs/en/brand.md) | [brand.md](docs/fr/brand.md) |
 
 ## Auteur
 
 **[Vakz](https://github.com/vakz0)** — étudiant ingénieur (France).  
-Projet perso : synchroniser le Tracker Notion sur le bureau et surveiller CPU, RAM et température sans quitter le flux de travail.
+Projet perso : widgets bureau Windows composables, avec sync Notion optionnelle et monitoring système.
 
 ## Licence
 

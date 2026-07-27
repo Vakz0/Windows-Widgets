@@ -1,29 +1,51 @@
 /** Types partagés entre le process Electron et l’UI React. */
 
+import type { WidgetState } from './widget'
+
+export type { WidgetState, CatalogWidgetInfo, WidgetDefinition, WidgetSource, WidgetPlacement, WidgetServiceId } from './widget'
+
+export interface TaskPropertyMapping {
+  title: string
+  date: string
+  tag: string
+  status: string
+  urgency?: string
+  /** Nom de la case à cocher « terminé » */
+  doneCheckbox?: string
+  /** Statut workflow Notion (ex. Status) */
+  workflowStatus?: string
+  /** Propriété texte pour la description */
+  description?: string
+}
+
+export interface TaskSourceFilters {
+  hideCompleted: boolean
+  completedStatusValues: string[]
+}
+
+export interface ProjectSourceConfig {
+  databaseId: string
+  projectPageId: string
+  relationProperty: string
+  label: string
+  properties: TaskPropertyMapping
+  filters: TaskSourceFilters
+}
+
 export interface AppConfig {
   notionToken: string
   databaseId: string
-  properties: {
-    title: string
-    date: string
-    tag: string
-    status: string
-    urgency?: string
-    /** Nom de la case à cocher « terminé » (peut être vide dans Tracker) */
-    doneCheckbox?: string
-  }
-  filters: {
-    hideCompleted: boolean
-    completedStatusValues: string[]
-  }
+  properties: TaskPropertyMapping
+  filters: TaskSourceFilters
+  /** Sources secondaires (bases filtrées par relation projet) */
+  projectSources?: ProjectSourceConfig[]
   refreshIntervalSeconds: number
   launchAtStartup: boolean
   demoMode: boolean
-  windows?: {
-    calendar?: WindowBounds
-    tasks?: WindowBounds
-    monitor?: WindowBounds
-  }
+  /** Activation par widget (catalogue). Absent → migration legacy. */
+  widgets?: Record<string, WidgetState>
+  /** Positions / tailles des fenêtres par id de widget */
+  windows?: Record<string, WindowBounds>
 }
 
 export interface WindowBounds {
@@ -47,6 +69,8 @@ export interface NotionTask {
   description: string | null
   url: string
   done: boolean
+  /** Libellé de la source projet (ex. source secondaire) */
+  sourceLabel?: string | null
 }
 
 export interface SystemStats {
@@ -64,6 +88,38 @@ export interface PublicConfig {
   demoMode: boolean
   configPath: string
   launchAtStartup: boolean
+  /** True when a non-placeholder token and database id are stored. */
+  notionConfigured: boolean
+  /** Masked hint only — never the raw secret. */
+  notionTokenStored: boolean
+  databaseId: string
+  properties: TaskPropertyMapping
+  filters: TaskSourceFilters
+  /** Secondary sources count (edited via config.json). */
+  projectSourcesCount: number
 }
 
-export type WidgetKind = 'calendar' | 'tasks' | 'monitor'
+export interface NotionDatabasePropertyInfo {
+  name: string
+  type: string
+}
+
+export interface NotionConnectionTestResult {
+  ok: boolean
+  message: string
+  databaseTitle?: string
+  properties?: NotionDatabasePropertyInfo[]
+  /** Suggested mapping inferred from property types (when ok). */
+  suggestedProperties?: Partial<TaskPropertyMapping>
+}
+
+export interface NotionSettingsPatch {
+  /** If omitted or empty, keep the existing token. */
+  notionToken?: string
+  databaseId?: string
+  properties?: Partial<TaskPropertyMapping>
+  filters?: Partial<TaskSourceFilters>
+}
+
+/** Id de widget (builtin ou futur plugin). */
+export type WidgetKind = string

@@ -1,6 +1,14 @@
 import { Client } from '@notionhq/client'
-import type { AppConfig, NotionTask } from '../shared/types'
-import { extractDatabaseId } from './config'
+import type {
+  AppConfig,
+  NotionConnectionTestResult,
+  NotionDatabasePropertyInfo,
+  NotionTask,
+  ProjectSourceConfig,
+  TaskPropertyMapping,
+  TaskSourceFilters,
+} from '../shared/types'
+import { extractDatabaseId, extractPageId } from './config'
 
 const NOTION_COLORS: Record<string, string> = {
   default: '#9B9A97',
@@ -13,6 +21,12 @@ const NOTION_COLORS: Record<string, string> = {
   purple: '#9A7FD1',
   pink: '#D97BA8',
   red: '#E05C5C',
+}
+
+interface ParseContext {
+  properties: TaskPropertyMapping
+  filters: TaskSourceFilters
+  sourceLabel?: string | null
 }
 
 function richTextToPlain(value: unknown): string {
@@ -63,14 +77,28 @@ function readCheckbox(value: unknown): boolean | null {
   return null
 }
 
-function isDone(props: Record<string, unknown>, config: AppConfig, statusName: string | null): boolean {
-  const checkboxName = config.properties.doneCheckbox
+function readPlainText(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null
+  const obj = value as { type?: string; rich_text?: unknown }
+  if (obj.type === 'rich_text') {
+    const text = richTextToPlain(value).trim()
+    return text || null
+  }
+  return null
+}
+
+function isDone(
+  props: Record<string, unknown>,
+  ctx: ParseContext,
+  importanceName: string | null,
+  workflowName: string | null,
+): boolean {
+  const checkboxName = ctx.properties.doneCheckbox
   if (checkboxName !== undefined) {
     if (checkboxName in props) {
       const checked = readCheckbox(props[checkboxName])
       if (checked != null) return checked
     }
-    // Tracker : case à cocher sans nom visible
     for (const [key, value] of Object.entries(props)) {
       const checked = readCheckbox(value)
       if (checked == null) continue
@@ -78,21 +106,34 @@ function isDone(props: Record<string, unknown>, config: AppConfig, statusName: s
     }
   }
 
-  return Boolean(
-    statusName &&
-      config.filters.completedStatusValues.some(
-        (v) => v.toLowerCase() === statusName.toLowerCase(),
-      ),
-  )
+  const completedValues = ctx.filters.completedStatusValues
+  const candidates = [workflowName, importanceName].filter(Boolean) as string[]
+  for (const name of candidates) {
+    if (
+      completedValues.some((v) => v.toLowerCase() === name.toLowerCase())
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
-function parsePage(page: Record<string, unknown>, config: AppConfig): NotionTask {
+function parsePage(page: Record<string, unknown>, ctx: ParseContext): NotionTask {
   const props = (page.properties ?? {}) as Record<string, unknown>
-  const titleProp = props[config.properties.title]
-  const dateProp = props[config.properties.date]
-  const tagProp = props[config.properties.tag]
-  const statusProp = props[config.properties.status]
-  const urgencyProp = props[config.properties.urgency ?? 'Urgence']
+  const { properties } = ctx
+
+  const titleProp = props[properties.title]
+  const dateProp = props[properties.date]
+  const tagProp = props[properties.tag]
+  const statusProp = props[properties.status]
+  const urgencyProp = properties.urgency ? props[properties.urgency] : undefined
+  const workflowProp = properties.workflowStatus
+    ? props[properties.workflowStatus]
+    : undefined
+  const descriptionProp = properties.description
+    ? props[properties.description]
+    : undefined
 
   let title = titleToPlain(titleProp)
   if (!title) title = richTextToPlain(titleProp)
@@ -101,8 +142,11 @@ function parsePage(page: Record<string, unknown>, config: AppConfig): NotionTask
   const tag = readSelect(tagProp)
   const importance = readSelect(statusProp)
   const urgency = readSelect(urgencyProp)
+  const workflow = readSelect(workflowProp)
   const statusName = importance.name
-  const done = isDone(props, config, statusName)
+  const done = isDone(props, ctx, statusName, workflow.name)
+
+  const descriptionFromProperty = descriptionProp ? readPlainText(descriptionProp) : null
 
   return {
     id: String(page.id),
@@ -110,17 +154,27 @@ function parsePage(page: Record<string, unknown>, config: AppConfig): NotionTask
     date: readDate(dateProp),
     tag: tag.name,
     tagColor: tag.color ? NOTION_COLORS[tag.color] ?? NOTION_COLORS.default : null,
-    status: statusName,
+    status: workflow.name ?? statusName,
     urgency: urgency.name,
     urgencyColor: urgency.color ? NOTION_COLORS[urgency.color] ?? NOTION_COLORS.default : null,
     importance: importance.name,
     importanceColor: importance.color
       ? NOTION_COLORS[importance.color] ?? NOTION_COLORS.default
       : null,
-    description: null,
+    description: descriptionFromProperty,
     url: String(page.url ?? ''),
     done,
+    sourceLabel: ctx.sourceLabel ?? null,
   }
+}
+
+function sortTasks(tasks: NotionTask[]): NotionTask[] {
+  return tasks.sort((a, b) => {
+    if (!a.date && !b.date) return a.title.localeCompare(b.title, 'fr')
+    if (!a.date) return 1
+    if (!b.date) return -1
+    return a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'fr')
+  })
 }
 
 function demoTasks(): NotionTask[] {
@@ -146,6 +200,7 @@ function demoTasks(): NotionTask[] {
       description: 'Trouver les cadeaux et proposer sur le groupe snap',
       url: '',
       done: false,
+      sourceLabel: null,
     },
     {
       id: 'demo-2',
@@ -161,6 +216,7 @@ function demoTasks(): NotionTask[] {
       description: 'Écrire une lettre manuscrite et la poster cette semaine.',
       url: '',
       done: false,
+      sourceLabel: null,
     },
     {
       id: 'demo-3',
@@ -176,6 +232,7 @@ function demoTasks(): NotionTask[] {
       description: 'Trier le bureau, plier les vêtements et passer l’aspirateur.',
       url: '',
       done: false,
+      sourceLabel: null,
     },
     {
       id: 'demo-4',
@@ -191,6 +248,7 @@ function demoTasks(): NotionTask[] {
       description: 'Faire 2 exercices de complexité et revoir les structures de données.',
       url: '',
       done: false,
+      sourceLabel: null,
     },
     {
       id: 'demo-5',
@@ -206,6 +264,7 @@ function demoTasks(): NotionTask[] {
       description: null,
       url: '',
       done: false,
+      sourceLabel: null,
     },
     {
       id: 'demo-6',
@@ -221,8 +280,86 @@ function demoTasks(): NotionTask[] {
       description: 'Prendre rendez-vous pour un contrôle avant septembre.',
       url: '',
       done: false,
+      sourceLabel: null,
     },
   ]
+}
+
+async function queryDatabasePages(
+  client: Client,
+  databaseId: string,
+  filter?: Parameters<Client['databases']['query']>[0]['filter'],
+): Promise<Record<string, unknown>[]> {
+  const pages: Record<string, unknown>[] = []
+  let cursor: string | undefined
+
+  do {
+    const response = await client.databases.query({
+      database_id: databaseId,
+      start_cursor: cursor,
+      page_size: 100,
+      filter,
+    })
+
+    for (const page of response.results) {
+      if ('properties' in page) {
+        pages.push(page as unknown as Record<string, unknown>)
+      }
+    }
+
+    cursor = response.has_more ? response.next_cursor ?? undefined : undefined
+  } while (cursor)
+
+  return pages
+}
+
+async function fetchDatabaseTasks(
+  client: Client,
+  databaseId: string,
+  ctx: ParseContext,
+): Promise<NotionTask[]> {
+  const pages = await queryDatabasePages(client, extractDatabaseId(databaseId))
+  const tasks: NotionTask[] = []
+
+  for (const page of pages) {
+    const task = parsePage(page, ctx)
+    if (ctx.filters.hideCompleted && task.done) continue
+    tasks.push(task)
+  }
+
+  return tasks
+}
+
+async function fetchProjectSourceTasks(
+  client: Client,
+  source: ProjectSourceConfig,
+): Promise<NotionTask[]> {
+  const projectId = extractPageId(source.projectPageId)
+  const filter = {
+    property: source.relationProperty,
+    relation: { contains: projectId },
+  }
+
+  const pages = await queryDatabasePages(
+    client,
+    extractDatabaseId(source.databaseId),
+    filter,
+  )
+
+  const ctx: ParseContext = {
+    properties: source.properties,
+    filters: source.filters,
+    sourceLabel: source.label,
+  }
+
+  const tasks: NotionTask[] = []
+  for (const page of pages) {
+    const task = parsePage(page, ctx)
+    if (source.filters.hideCompleted && task.done) continue
+    tasks.push(task)
+  }
+
+  return tasks
 }
 
 export async function fetchNotionTasks(config: AppConfig): Promise<NotionTask[]> {
@@ -231,35 +368,41 @@ export async function fetchNotionTasks(config: AppConfig): Promise<NotionTask[]>
   }
 
   const client = new Client({ auth: config.notionToken })
-  const databaseId = extractDatabaseId(config.databaseId)
+  const primaryCtx: ParseContext = {
+    properties: config.properties,
+    filters: config.filters,
+    sourceLabel: null,
+  }
+
   const tasks: NotionTask[] = []
-  let cursor: string | undefined
+  const seen = new Set<string>()
 
-  do {
-    const response = await client.databases.query({
-      database_id: databaseId,
-      start_cursor: cursor,
-      page_size: 100,
-    })
-
-    for (const page of response.results) {
-      if (!('properties' in page)) continue
-      const task = parsePage(page as unknown as Record<string, unknown>, config)
-      if (config.filters.hideCompleted && task.done) continue
+  try {
+    const primary = await fetchDatabaseTasks(client, config.databaseId, primaryCtx)
+    for (const task of primary) {
+      if (seen.has(task.id)) continue
+      seen.add(task.id)
       tasks.push(task)
     }
+  } catch (err) {
+    console.error('Failed to fetch primary Notion database', err)
+    throw err
+  }
 
-    cursor = response.has_more ? response.next_cursor ?? undefined : undefined
-  } while (cursor)
+  for (const source of config.projectSources ?? []) {
+    try {
+      const projectTasks = await fetchProjectSourceTasks(client, source)
+      for (const task of projectTasks) {
+        if (seen.has(task.id)) continue
+        seen.add(task.id)
+        tasks.push(task)
+      }
+    } catch (err) {
+      console.error(`Failed to fetch project source "${source.label}"`, err)
+    }
+  }
 
-  tasks.sort((a, b) => {
-    if (!a.date && !b.date) return a.title.localeCompare(b.title, 'fr')
-    if (!a.date) return 1
-    if (!b.date) return -1
-    return a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'fr')
-  })
-
-  return tasks
+  return sortTasks(tasks)
 }
 
 function blockToPlain(block: Record<string, unknown>): string {
@@ -309,4 +452,78 @@ export async function fetchTaskDescription(
 
   const description = parts.join('\n\n').trim()
   return description || null
+}
+
+function databaseTitle(db: { title?: Array<{ plain_text?: string }> }): string {
+  if (!Array.isArray(db.title)) return 'Database'
+  return db.title.map((t) => t.plain_text ?? '').join('').trim() || 'Database'
+}
+
+function suggestPropertyMapping(
+  props: NotionDatabasePropertyInfo[],
+): Partial<TaskPropertyMapping> {
+  const byType = (type: string) => props.filter((p) => p.type === type)
+  const title = byType('title')[0]?.name
+  const date = byType('date')[0]?.name
+  const selects = [...byType('select'), ...byType('multi_select'), ...byType('status')]
+  const checkboxes = byType('checkbox')
+
+  const suggested: Partial<TaskPropertyMapping> = {}
+  if (title) suggested.title = title
+  if (date) suggested.date = date
+  if (selects[0]) suggested.tag = selects[0].name
+  if (selects[1]) suggested.status = selects[1].name
+  if (selects[2]) suggested.urgency = selects[2].name
+  if (checkboxes[0]) suggested.doneCheckbox = checkboxes[0].name
+  return suggested
+}
+
+/**
+ * Test Notion credentials against a database (retrieve schema).
+ * Token is only used in the main process — never returned.
+ */
+export async function testNotionConnection(opts: {
+  token: string
+  databaseId: string
+}): Promise<NotionConnectionTestResult> {
+  const token = opts.token.trim()
+  const databaseId = opts.databaseId.trim()
+  if (!token) {
+    return { ok: false, message: 'Token d’intégration manquant.' }
+  }
+  if (!databaseId) {
+    return { ok: false, message: 'URL ou ID de base manquant.' }
+  }
+
+  try {
+    const client = new Client({ auth: token })
+    const dbId = extractDatabaseId(databaseId)
+    const db = await client.databases.retrieve({ database_id: dbId })
+    const rawProps =
+      'properties' in db && db.properties && typeof db.properties === 'object'
+        ? (db.properties as Record<string, { type?: string }>)
+        : {}
+
+    const properties: NotionDatabasePropertyInfo[] = Object.entries(rawProps).map(
+      ([name, prop]) => ({
+        name,
+        type: String(prop?.type ?? 'unknown'),
+      }),
+    )
+
+    return {
+      ok: true,
+      message: 'Connexion réussie.',
+      databaseTitle: databaseTitle(db as { title?: Array<{ plain_text?: string }> }),
+      properties,
+      suggestedProperties: suggestPropertyMapping(properties),
+    }
+  } catch (err) {
+    const message =
+      err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Échec de la connexion Notion.'
+    console.error('Notion connection test failed', err)
+    return { ok: false, message }
+  }
 }

@@ -14,15 +14,35 @@ import { migrateLegacyUserData } from './migrate'
 import {
   getConfigPath,
   loadConfig,
+  saveConfig,
   updateWindowBounds,
+  setWidgetEnabled,
+  isWidgetEnabledInConfig,
+  hasValidNotionCredentials,
 } from './config'
-import { fetchNotionTasks, fetchTaskDescription } from './notion'
+import { fetchNotionTasks, fetchTaskDescription, testNotionConnection } from './notion'
 import { getSystemStats, startTempDaemonElevated, stopTempDaemon, isTempServiceRunning } from './system'
 import { createTrayMenuController } from './trayMenu'
-import type { AppConfig, NotionTask, SystemStats, WidgetKind } from '../shared/types'
+import {
+  getAllWidgetDefinitions,
+  getDesktopWidgetDefinitions,
+  getWidgetDefinition,
+} from './widgets/registry'
+import type {
+  AppConfig,
+  CatalogWidgetInfo,
+  NotionSettingsPatch,
+  NotionTask,
+  PublicConfig,
+  SystemStats,
+  TaskPropertyMapping,
+  TaskSourceFilters,
+} from '../shared/types'
+import type { WidgetServiceId } from '../shared/widget'
 
 // Lower Chromium cost for mostly-static widgets
 app.setName('lattice-desk')
+app.setAppUserModelId('com.vakz.lattice-desk')
 app.disableHardwareAcceleration()
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
@@ -41,6 +61,7 @@ type PowerMode = 'active' | 'idle' | 'sleep'
 
 let config: AppConfig
 let tray: Tray | null = null
+let catalogWindow: BrowserWindow | null = null
 let tasksCache: NotionTask[] = []
 let statsCache: SystemStats | null = null
 let notionTimer: NodeJS.Timeout | null = null
@@ -53,8 +74,8 @@ let statsInFlight = false
 let lastNotionAt = 0
 let sleeping = false
 
-const windows: Partial<Record<WidgetKind, BrowserWindow>> = {}
-const boundsTimers: Partial<Record<WidgetKind, NodeJS.Timeout>> = {}
+const windows: Partial<Record<string, BrowserWindow>> = {}
+const boundsTimers: Partial<Record<string, NodeJS.Timeout>> = {}
 
 function resolveAsset(...parts: string[]): string {
   const candidates = [
@@ -73,11 +94,49 @@ function preloadPath(): string {
   return path.join(__dirname, 'preload.js')
 }
 
-function desktopWidgetsVisible(): boolean {
-  return Boolean(
-    (windows.calendar && !windows.calendar.isDestroyed() && windows.calendar.isVisible()) ||
-      (windows.tasks && !windows.tasks.isDestroyed() && windows.tasks.isVisible()),
+/** Icône app (barre des tâches / Alt-Tab). Préfère .ico sous Windows. */
+function appIconPath(): string {
+  const ico = resolveAsset('assets', 'icon.ico')
+  if (fs.existsSync(ico)) return ico
+  return resolveAsset('assets', 'icon.png')
+}
+
+function appIconImage(): Electron.NativeImage {
+  const img = nativeImage.createFromPath(appIconPath())
+  return img.isEmpty() ? nativeImage.createEmpty() : img
+}
+
+function isEnabled(id: string): boolean {
+  return isWidgetEnabledInConfig(config, id)
+}
+
+function enabledDefsForService(service: WidgetServiceId) {
+  return getAllWidgetDefinitions().filter(
+    (d) => isEnabled(d.id) && d.services.includes(service),
   )
+}
+
+function hasService(service: WidgetServiceId): boolean {
+  return enabledDefsForService(service).length > 0
+}
+
+function notionWidgetIds(): string[] {
+  return enabledDefsForService('notion').map((d) => d.id)
+}
+
+function desktopWidgetsVisible(): boolean {
+  return getDesktopWidgetDefinitions().some((d) => {
+    const win = windows[d.id]
+    return Boolean(win && !win.isDestroyed() && win.isVisible())
+  })
+}
+
+function popupWidgetVisible(): boolean {
+  return getAllWidgetDefinitions().some((d) => {
+    if (d.placement !== 'popup') return false
+    const win = windows[d.id]
+    return Boolean(win && !win.isDestroyed() && win.isVisible())
+  })
 }
 
 function computePowerMode(): PowerMode {
@@ -87,7 +146,7 @@ function computePowerMode(): PowerMode {
   } catch {
     /* ignore */
   }
-  if (monitorVisible) return 'active'
+  if (monitorVisible || popupWidgetVisible()) return 'active'
   if (desktopWidgetsVisible()) return 'idle'
   return 'sleep'
 }
@@ -105,33 +164,55 @@ function statsIntervalMs(): number {
   return STATS_IDLE_MS
 }
 
-function createWidgetWindow(
-  kind: WidgetKind,
-  opts: { width: number; height: number; show?: boolean },
-): BrowserWindow {
-  const saved = config.windows?.[kind]
-  const display = screen.getPrimaryDisplay().workArea
+function loadWidgetUrl(win: BrowserWindow, widgetId: string): void {
+  if (isDev && DEV_URL) {
+    void win.loadURL(`${DEV_URL}?widget=${widgetId}`)
+  } else {
+    void win.loadFile(path.join(__dirname, '../dist/index.html'), {
+      query: { widget: widgetId },
+    })
+  }
+}
 
-  const width = kind === 'monitor' ? opts.width : (saved?.width ?? opts.width)
-  const height = kind === 'monitor' ? opts.height : (saved?.height ?? opts.height)
-  let x = kind === 'monitor' ? undefined : saved?.x
-  let y = kind === 'monitor' ? undefined : saved?.y
+function createWidgetWindow(
+  id: string,
+  opts: { show?: boolean } = {},
+): BrowserWindow {
+  const def = getWidgetDefinition(id)
+  if (!def) {
+    throw new Error(`Unknown widget: ${id}`)
+  }
+
+  const saved = config.windows?.[id]
+  const display = screen.getPrimaryDisplay().workArea
+  const isPopup = def.placement === 'popup'
+
+  const width = isPopup ? def.defaultBounds.width : (saved?.width ?? def.defaultBounds.width)
+  const height = isPopup ? def.defaultBounds.height : (saved?.height ?? def.defaultBounds.height)
+  let x = isPopup ? undefined : saved?.x
+  let y = isPopup ? undefined : saved?.y
 
   if (x == null || y == null) {
-    if (kind === 'calendar') {
+    if (id === 'calendar') {
       x = display.x + 40
       y = display.y + 80
-    } else if (kind === 'tasks') {
+    } else if (id === 'tasks') {
       x = display.x + 40
       y = display.y + display.height - height - 40
-    } else {
+    } else if (isPopup) {
       const cursor = screen.getCursorScreenPoint()
       x = Math.min(cursor.x - width / 2, display.x + display.width - width - 8)
       y = Math.min(cursor.y - height - 12, display.y + display.height - height - 8)
       x = Math.max(display.x + 8, x)
       y = Math.max(display.y + 8, y)
+    } else {
+      x = display.x + 40
+      y = display.y + 80
     }
   }
+
+  const resizable = def.windowOptions?.resizable ?? true
+  const alwaysOnTop = def.windowOptions?.alwaysOnTop ?? false
 
   const win = new BrowserWindow({
     width,
@@ -141,11 +222,12 @@ function createWidgetWindow(
     show: false,
     frame: false,
     transparent: false,
-    resizable: kind !== 'monitor',
+    resizable,
     skipTaskbar: true,
-    alwaysOnTop: kind === 'monitor',
+    alwaysOnTop,
     hasShadow: true,
     backgroundColor: '#191919',
+    icon: appIconPath(),
     paintWhenInitiallyHidden: false,
     webPreferences: {
       preload: preloadPath(),
@@ -158,60 +240,57 @@ function createWidgetWindow(
     },
   })
 
-  if (kind === 'monitor') {
+  const winIcon = appIconImage()
+  if (!winIcon.isEmpty()) win.setIcon(winIcon)
+
+  if (alwaysOnTop) {
     win.setAlwaysOnTop(true, 'pop-up-menu')
     win.setVisibleOnAllWorkspaces(true)
   }
 
-  if (isDev && DEV_URL) {
-    void win.loadURL(`${DEV_URL}?widget=${kind}`)
-  } else {
-    void win.loadFile(path.join(__dirname, '../dist/index.html'), {
-      query: { widget: kind },
-    })
-  }
+  loadWidgetUrl(win, id)
 
   win.webContents.once('did-finish-load', () => {
-    if (opts.show !== false && kind !== 'monitor') {
+    if (opts.show !== false && !isPopup) {
       win.showInactive()
     }
   })
 
-  win.on('moved', () => schedulePersistBounds(kind, win))
-  win.on('resized', () => schedulePersistBounds(kind, win))
+  win.on('moved', () => schedulePersistBounds(id, win))
+  win.on('resized', () => schedulePersistBounds(id, win))
   win.on('show', () => {
-    if (kind === 'monitor') {
-      monitorVisible = true
+    if (isPopup) {
+      monitorVisible = id === 'monitor' ? true : monitorVisible
       applyPowerMode(true)
-      void refreshStats(true)
+      if (hasService('system-stats')) void refreshStats(true)
     } else {
       applyPowerMode()
     }
   })
   win.on('hide', () => {
-    if (kind === 'monitor') {
-      monitorVisible = false
-      applyPowerMode()
-    } else {
-      applyPowerMode()
-    }
+    if (id === 'monitor') monitorVisible = false
+    applyPowerMode()
+  })
+  win.on('closed', () => {
+    if (windows[id] === win) delete windows[id]
+    if (id === 'monitor') monitorVisible = false
   })
 
-  if (kind === 'monitor') {
+  if (isPopup) {
     win.on('blur', () => {
       if (!win.isDestroyed()) win.hide()
     })
   }
 
-  windows[kind] = win
+  windows[id] = win
   return win
 }
 
-function schedulePersistBounds(kind: WidgetKind, win: BrowserWindow): void {
-  if (boundsTimers[kind]) clearTimeout(boundsTimers[kind])
-  boundsTimers[kind] = setTimeout(() => {
+function schedulePersistBounds(id: string, win: BrowserWindow): void {
+  if (boundsTimers[id]) clearTimeout(boundsTimers[id])
+  boundsTimers[id] = setTimeout(() => {
     if (win.isDestroyed()) return
-    config = updateWindowBounds(config, kind, win.getBounds())
+    config = updateWindowBounds(config, id, win.getBounds())
   }, BOUNDS_SAVE_DEBOUNCE_MS)
 }
 
@@ -230,8 +309,7 @@ function createTrayIcon(): Electron.NativeImage {
     }
   }
   const png = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMElEQVQ4T2NkYGD4z0ABYBzVMKoBBgZGRgY' +
-      'Ghv8MYACkGQYGBgYGRgYGRgYGBgYAwv4CAf1yQ9kAAAAASUVORK5CYII=',
+    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMElEQVQ4T2NkYGD4z0ABYBzVMKoBBgZGRgYGBgYGRgYGBgYAwv4CAf1yQ9kAAAAASUVORK5CYII=',
     'base64',
   )
   return nativeImage.createFromBuffer(png)
@@ -257,12 +335,14 @@ function updateTrayTooltip(): void {
 function ensureMonitorWindow(): BrowserWindow {
   let win = windows.monitor
   if (!win || win.isDestroyed()) {
-    win = createWidgetWindow('monitor', { width: 360, height: 300, show: false })
+    win = createWidgetWindow('monitor', { show: false })
   }
   return win
 }
 
 function toggleMonitor(): void {
+  if (!isEnabled('monitor')) return
+
   const win = ensureMonitorWindow()
 
   if (win.isVisible()) {
@@ -290,31 +370,184 @@ function toggleMonitor(): void {
   }
 }
 
-function isWidgetVisible(kind: WidgetKind): boolean {
-  const win = windows[kind]
+function isWidgetVisible(id: string): boolean {
+  const win = windows[id]
   return Boolean(win && !win.isDestroyed() && win.isVisible())
 }
 
-function showWidget(kind: 'calendar' | 'tasks'): void {
-  const win = windows[kind]
-  if (!win || win.isDestroyed()) return
+function showWidget(id: string): void {
+  if (!isEnabled(id)) return
+  let win = windows[id]
+  if (!win || win.isDestroyed()) {
+    const def = getWidgetDefinition(id)
+    if (!def || def.placement !== 'desktop') return
+    win = createWidgetWindow(id)
+    return
+  }
   win.show()
   applyPowerMode()
 }
 
-function hideWidget(kind: 'calendar' | 'tasks'): void {
-  windows[kind]?.hide()
+function hideWidget(id: string): void {
+  windows[id]?.hide()
 }
 
-function hideDesktopWidgets(): void {
-  windows.calendar?.hide()
-  windows.tasks?.hide()
-  applyPowerMode()
+function listCatalogWidgets(): CatalogWidgetInfo[] {
+  return getAllWidgetDefinitions().map((d) => ({
+    id: d.id,
+    label: d.label,
+    description: d.description,
+    source: d.source,
+    placement: d.placement,
+    enabled: isEnabled(d.id),
+  }))
 }
 
-function showDesktopWidgets(): void {
-  showWidget('calendar')
-  showWidget('tasks')
+function broadcastWidgetsChanged(): void {
+  const payload = listCatalogWidgets()
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('widgets-changed', payload)
+    }
+  }
+}
+
+function enableWidget(id: string): boolean {
+  const def = getWidgetDefinition(id)
+  if (!def) return false
+  if (isEnabled(id)) return true
+
+  config = setWidgetEnabled(config, id, true)
+
+  if (def.placement === 'desktop') {
+    createWidgetWindow(id)
+  }
+  // popup widgets stay lazy until tray click
+
+  recomputeServices()
+  broadcastWidgetsChanged()
+  return true
+}
+
+function disableWidget(id: string): boolean {
+  const def = getWidgetDefinition(id)
+  if (!def) return false
+  if (!isEnabled(id)) return true
+
+  config = setWidgetEnabled(config, id, false)
+
+  const win = windows[id]
+  if (win && !win.isDestroyed()) {
+    win.destroy()
+  }
+  delete windows[id]
+  if (id === 'monitor') monitorVisible = false
+
+  recomputeServices()
+  broadcastWidgetsChanged()
+  return true
+}
+
+function setWidgetEnabledState(id: string, enabled: boolean): boolean {
+  return enabled ? enableWidget(id) : disableWidget(id)
+}
+
+function openCatalog(opts?: { view?: 'catalog' | 'settings' }): void {
+  const view = opts?.view ?? 'catalog'
+
+  if (catalogWindow && !catalogWindow.isDestroyed()) {
+    catalogWindow.webContents.send('catalog-navigate', view)
+    catalogWindow.show()
+    catalogWindow.focus()
+    return
+  }
+
+  const display = screen.getPrimaryDisplay().workArea
+  const width = 780
+  const height = 560
+  const x = display.x + Math.floor((display.width - width) / 2)
+  const y = display.y + Math.floor((display.height - height) / 2)
+
+  catalogWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    show: false,
+    frame: false,
+    transparent: false,
+    resizable: true,
+    minimizable: true,
+    maximizable: true,
+    skipTaskbar: false,
+    alwaysOnTop: false,
+    hasShadow: true,
+    backgroundColor: '#191919',
+    icon: appIconPath(),
+    webPreferences: {
+      preload: preloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      backgroundThrottling: true,
+      spellcheck: false,
+      v8CacheOptions: 'code',
+    },
+  })
+
+  const catalogIcon = appIconImage()
+  if (!catalogIcon.isEmpty()) catalogWindow.setIcon(catalogIcon)
+
+  if (isDev && DEV_URL) {
+    void catalogWindow.loadURL(`${DEV_URL}?widget=catalog&view=${view}`)
+  } else {
+    void catalogWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+      query: { widget: 'catalog', view },
+    })
+  }
+
+  const emitCatalogMaximized = () => {
+    if (!catalogWindow || catalogWindow.isDestroyed()) return
+    catalogWindow.webContents.send(
+      'catalog-maximized-changed',
+      catalogWindow.isMaximized(),
+    )
+  }
+  catalogWindow.on('maximize', emitCatalogMaximized)
+  catalogWindow.on('unmaximize', emitCatalogMaximized)
+
+  catalogWindow.webContents.once('did-finish-load', () => {
+    catalogWindow?.show()
+    catalogWindow?.focus()
+  })
+
+  catalogWindow.on('closed', () => {
+    catalogWindow = null
+  })
+}
+
+function recomputeServices(): void {
+  if (!hasService('notion')) {
+    tasksCache = []
+  } else if (!tasksCache.length) {
+    void refreshNotion(true)
+  }
+
+  if (!hasService('temp-daemon') && isTempServiceRunning()) {
+    stopTempDaemon()
+  }
+
+  applyPowerMode(true)
+}
+
+function bootEnabledWidgets(): void {
+  for (const d of getAllWidgetDefinitions()) {
+    if (!isEnabled(d.id)) continue
+    if (d.placement === 'desktop') {
+      createWidgetWindow(d.id)
+    }
+    // popup: lazy
+  }
 }
 
 let trayMenu: ReturnType<typeof createTrayMenuController> | null = null
@@ -332,12 +565,19 @@ function setupTray(): void {
     setStats: (stats) => {
       statsCache = stats
     },
-    isWidgetVisible: (kind) => isWidgetVisible(kind),
+    getEnabledDesktopWidgets: () =>
+      getDesktopWidgetDefinitions()
+        .filter((d) => isEnabled(d.id))
+        .map((d) => ({ id: d.id, label: d.label })),
+    isWidgetVisible,
+    isMonitorEnabled: () => isEnabled('monitor'),
+    hasNotionWidgets: () => hasService('notion'),
+    hasTempDaemon: () => hasService('temp-daemon'),
     showWidget,
     hideWidget,
-    showDesktopWidgets,
-    hideDesktopWidgets,
     toggleMonitor,
+    openCatalog,
+    openSettings: () => openCatalog({ view: 'settings' }),
     applyPowerMode: () => applyPowerMode(),
     applyLaunchAtStartup,
     refreshNotion,
@@ -346,7 +586,10 @@ function setupTray(): void {
     updateTrayTooltip,
   })
 
-  tray.on('click', () => toggleMonitor())
+  tray.on('click', () => {
+    if (isEnabled('monitor')) toggleMonitor()
+    else openCatalog()
+  })
   tray.on('right-click', (_event, bounds) => {
     trayMenu?.popupAt(bounds)
   })
@@ -360,9 +603,9 @@ function applyLaunchAtStartup(): void {
   })
 }
 
-function sendTo(kinds: WidgetKind[], channel: string, payload: unknown): void {
-  for (const kind of kinds) {
-    const win = windows[kind]
+function sendTo(ids: string[], channel: string, payload: unknown): void {
+  for (const id of ids) {
+    const win = windows[id]
     if (win && !win.isDestroyed()) {
       win.webContents.send(channel, payload)
     }
@@ -370,6 +613,7 @@ function sendTo(kinds: WidgetKind[], channel: string, payload: unknown): void {
 }
 
 async function refreshNotion(force = false): Promise<NotionTask[]> {
+  if (!hasService('notion')) return tasksCache
   if (notionInFlight) return tasksCache
   if (!force && powerMode === 'sleep' && tasksCache.length > 0) {
     return tasksCache
@@ -384,10 +628,10 @@ async function refreshNotion(force = false): Promise<NotionTask[]> {
   try {
     tasksCache = await fetchNotionTasks(config)
     lastNotionAt = Date.now()
-    sendTo(['calendar', 'tasks'], 'tasks-updated', tasksCache)
+    sendTo(notionWidgetIds(), 'tasks-updated', tasksCache)
   } catch (err) {
     console.error('Notion sync failed', err)
-    sendTo(['calendar', 'tasks'], 'tasks-error', String(err))
+    sendTo(notionWidgetIds(), 'tasks-error', String(err))
   } finally {
     notionInFlight = false
   }
@@ -402,7 +646,7 @@ async function refreshStats(forceTemp = false): Promise<SystemStats> {
       includeTemp: forceTemp || monitorVisible,
     })
     updateTrayTooltip()
-    if (monitorVisible) {
+    if (monitorVisible && isEnabled('monitor')) {
       sendTo(['monitor'], 'stats-updated', statsCache)
     }
   } finally {
@@ -425,12 +669,15 @@ function clearTimers(): void {
 function scheduleTimers(): void {
   clearTimers()
 
-  const notionMs = notionIntervalMs()
-  notionTimer = setInterval(() => {
-    if (powerMode === 'sleep') return
-    void refreshNotion()
-  }, notionMs)
+  if (hasService('notion')) {
+    const notionMs = notionIntervalMs()
+    notionTimer = setInterval(() => {
+      if (powerMode === 'sleep') return
+      void refreshNotion()
+    }, notionMs)
+  }
 
+  // Light tray sampling always (tooltip); monitor push gated in refreshStats
   const statsMs = statsIntervalMs()
   if (statsMs > 0) {
     statsTimer = setInterval(() => {
@@ -454,7 +701,7 @@ function setupPowerManagement(): void {
   const leaveSleep = () => {
     sleeping = false
     applyPowerMode(true)
-    void refreshNotion(true)
+    if (hasService('notion')) void refreshNotion(true)
     void refreshStats(monitorVisible)
   }
 
@@ -463,20 +710,38 @@ function setupPowerManagement(): void {
   powerMonitor.on('lock-screen', enterSleep)
   powerMonitor.on('unlock-screen', leaveSleep)
 
-  // Re-evaluate idle every 30s without heavy work
   powerTimer = setInterval(() => {
     applyPowerMode()
   }, 30_000)
 }
 
+function toPublicConfig(): PublicConfig {
+  return {
+    refreshIntervalSeconds: config.refreshIntervalSeconds,
+    demoMode: config.demoMode,
+    configPath: getConfigPath(),
+    launchAtStartup: config.launchAtStartup,
+    notionConfigured: hasValidNotionCredentials(config),
+    notionTokenStored: Boolean(config.notionToken?.trim()),
+    databaseId: config.databaseId ?? '',
+    properties: { ...config.properties },
+    filters: {
+      hideCompleted: config.filters.hideCompleted,
+      completedStatusValues: [...(config.filters.completedStatusValues ?? [])],
+    },
+    projectSourcesCount: config.projectSources?.length ?? 0,
+  }
+}
+
 function registerIpc(): void {
   ipcMain.handle('get-tasks', async () => {
+    if (!hasService('notion')) return []
     if (!tasksCache.length) await refreshNotion(true)
     return tasksCache
   })
   ipcMain.handle('refresh-tasks', async () => refreshNotion(true))
   ipcMain.handle('get-task-description', async (_e, pageId: string) => {
-    if (!pageId) return null
+    if (!pageId || !hasService('notion')) return null
     const cached = tasksCache.find((t) => t.id === pageId)
     if (cached?.description) return cached.description
     try {
@@ -492,26 +757,197 @@ function registerIpc(): void {
     if (!statsCache) await refreshStats(true)
     return statsCache
   })
-  ipcMain.handle('get-config', () => ({
-    refreshIntervalSeconds: config.refreshIntervalSeconds,
-    demoMode: config.demoMode,
-    configPath: getConfigPath(),
-    launchAtStartup: config.launchAtStartup,
-  }))
+  ipcMain.handle('get-config', () => toPublicConfig())
+  ipcMain.handle(
+    'update-public-settings',
+    (
+      _e,
+      patch: {
+        refreshIntervalSeconds?: number
+        demoMode?: boolean
+        launchAtStartup?: boolean
+      },
+    ) => {
+      if (!patch || typeof patch !== 'object') {
+        return {
+          ok: false,
+          config: toPublicConfig(),
+        }
+      }
+
+      let reschedule = false
+      let refreshTasks = false
+
+      if (typeof patch.refreshIntervalSeconds === 'number') {
+        const next = Math.max(60, Math.round(patch.refreshIntervalSeconds))
+        if (next !== config.refreshIntervalSeconds) {
+          config.refreshIntervalSeconds = next
+          reschedule = true
+        }
+      }
+      if (typeof patch.demoMode === 'boolean' && patch.demoMode !== config.demoMode) {
+        config.demoMode = patch.demoMode
+        refreshTasks = true
+      }
+      if (
+        typeof patch.launchAtStartup === 'boolean' &&
+        patch.launchAtStartup !== config.launchAtStartup
+      ) {
+        config.launchAtStartup = patch.launchAtStartup
+        applyLaunchAtStartup()
+      }
+
+      saveConfig(config)
+      if (reschedule) applyPowerMode(true)
+      if (refreshTasks && hasService('notion')) void refreshNotion(true)
+
+      return {
+        ok: true,
+        config: toPublicConfig(),
+      }
+    },
+  )
+  ipcMain.handle('get-notion-settings', () => toPublicConfig())
+  ipcMain.handle(
+    'save-notion-settings',
+    (_e, patch: NotionSettingsPatch) => {
+      if (!patch || typeof patch !== 'object') {
+        return { ok: false, config: toPublicConfig(), message: 'Payload invalide.' }
+      }
+
+      if (typeof patch.notionToken === 'string' && patch.notionToken.trim()) {
+        config.notionToken = patch.notionToken.trim()
+      }
+      if (typeof patch.databaseId === 'string') {
+        config.databaseId = patch.databaseId.trim()
+      }
+      if (patch.properties && typeof patch.properties === 'object') {
+        const next: TaskPropertyMapping = { ...config.properties }
+        for (const key of [
+          'title',
+          'date',
+          'tag',
+          'status',
+          'urgency',
+          'doneCheckbox',
+          'workflowStatus',
+          'description',
+        ] as const) {
+          const value = patch.properties[key]
+          if (typeof value === 'string') {
+            if (key === 'urgency' || key === 'doneCheckbox' || key === 'workflowStatus' || key === 'description') {
+              next[key] = value
+            } else if (value.trim()) {
+              next[key] = value
+            }
+          }
+        }
+        config.properties = next
+      }
+      if (patch.filters && typeof patch.filters === 'object') {
+        const next: TaskSourceFilters = {
+          hideCompleted: config.filters.hideCompleted,
+          completedStatusValues: [...(config.filters.completedStatusValues ?? [])],
+        }
+        if (typeof patch.filters.hideCompleted === 'boolean') {
+          next.hideCompleted = patch.filters.hideCompleted
+        }
+        if (Array.isArray(patch.filters.completedStatusValues)) {
+          next.completedStatusValues = patch.filters.completedStatusValues
+            .filter((v): v is string => typeof v === 'string')
+            .map((v) => v.trim())
+            .filter(Boolean)
+        }
+        config.filters = next
+      }
+
+      if (hasValidNotionCredentials(config)) {
+        config.demoMode = false
+      }
+
+      saveConfig(config)
+      applyPowerMode(true)
+      if (hasService('notion')) void refreshNotion(true)
+
+      return {
+        ok: true,
+        config: toPublicConfig(),
+        message: hasValidNotionCredentials(config)
+          ? 'Paramètres Notion enregistrés.'
+          : 'Enregistré — ajoutez un token et une base pour quitter le mode démo.',
+      }
+    },
+  )
+  ipcMain.handle(
+    'test-notion-connection',
+    async (
+      _e,
+      payload: { notionToken?: string; databaseId?: string },
+    ) => {
+      const token =
+        typeof payload?.notionToken === 'string' && payload.notionToken.trim()
+          ? payload.notionToken.trim()
+          : config.notionToken
+      const databaseId =
+        typeof payload?.databaseId === 'string' && payload.databaseId.trim()
+          ? payload.databaseId.trim()
+          : config.databaseId
+      return testNotionConnection({ token: token ?? '', databaseId: databaseId ?? '' })
+    },
+  )
+  ipcMain.handle('get-app-version', () => app.getVersion())
+  ipcMain.handle('open-config-file', () => {
+    void shell.openPath(getConfigPath())
+  })
+  ipcMain.handle('list-widgets', () => listCatalogWidgets())
+  ipcMain.handle('set-widget-enabled', (_e, id: string, enabled: boolean) => {
+    if (typeof id !== 'string' || typeof enabled !== 'boolean') {
+      return { ok: false, widgets: listCatalogWidgets() }
+    }
+    const ok = setWidgetEnabledState(id, enabled)
+    return { ok, widgets: listCatalogWidgets() }
+  })
+  ipcMain.handle('open-catalog', () => {
+    openCatalog()
+  })
+  ipcMain.handle('close-catalog', () => {
+    if (catalogWindow && !catalogWindow.isDestroyed()) {
+      catalogWindow.close()
+    }
+  })
+  ipcMain.handle('minimize-catalog', () => {
+    if (catalogWindow && !catalogWindow.isDestroyed()) {
+      catalogWindow.minimize()
+    }
+  })
+  ipcMain.handle('toggle-maximize-catalog', () => {
+    if (!catalogWindow || catalogWindow.isDestroyed()) return false
+    if (catalogWindow.isMaximized()) catalogWindow.unmaximize()
+    else catalogWindow.maximize()
+    return catalogWindow.isMaximized()
+  })
+  ipcMain.handle('is-catalog-maximized', () => {
+    if (!catalogWindow || catalogWindow.isDestroyed()) return false
+    return catalogWindow.isMaximized()
+  })
   ipcMain.handle('open-external', async (_e, url: string) => {
     if (url) await shell.openExternal(url)
   })
   ipcMain.handle('hide-monitor', () => {
     windows.monitor?.hide()
   })
-  ipcMain.handle('enable-temp', async () => startTempDaemonElevated())
+  ipcMain.handle('enable-temp', async () => {
+    if (!hasService('temp-daemon')) {
+      return { ok: false, message: 'Activez le widget Monitoring pour utiliser la température.' }
+    }
+    return startTempDaemonElevated()
+  })
   ipcMain.handle('disable-temp', () => stopTempDaemon())
 }
 
 app.whenReady().then(() => {
   migrateLegacyUserData()
   config = loadConfig()
-  // Default to a gentler Notion cadence if still aggressive
   if (config.refreshIntervalSeconds < 60) {
     config.refreshIntervalSeconds = 90
   }
@@ -521,17 +957,16 @@ app.whenReady().then(() => {
   setupTray()
   setupPowerManagement()
 
-  // Desktop widgets only — monitor is lazy-created on tray click
-  createWidgetWindow('calendar', { width: 920, height: 420 })
-  createWidgetWindow('tasks', { width: 360, height: 480 })
+  bootEnabledWidgets()
 
-  // Warm CPU sampler once, then light tray sample
   void getSystemStats({ includeTemp: false }).then(() => {
     void refreshStats(false)
   })
-  void refreshNotion(true)
+  if (hasService('notion')) {
+    void refreshNotion(true)
+  }
 
-  powerMode = 'idle'
+  powerMode = computePowerMode()
   scheduleTimers()
 })
 

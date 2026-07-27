@@ -76,6 +76,14 @@ export function TaskDetailPanel({
       <div className="task-detail-body">
         <DetailRow label="Date">{formatFrShortDate(task.date)}</DetailRow>
 
+        <DetailRow label="Projet">
+          {task.sourceLabel ? (
+            <span className="detail-plain">{task.sourceLabel}</span>
+          ) : (
+            <span className="detail-empty">—</span>
+          )}
+        </DetailRow>
+
         <DetailRow label="État">
           {task.tag ? <Pill label={task.tag} color={task.tagColor} /> : <span className="detail-empty">—</span>}
         </DetailRow>
