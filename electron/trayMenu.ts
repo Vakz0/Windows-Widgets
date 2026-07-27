@@ -7,17 +7,26 @@ import {
   isTempServiceRunning,
 } from './system'
 
+export interface TrayDesktopWidget {
+  id: string
+  label: string
+}
+
 export interface TrayMenuDeps {
   getConfig: () => AppConfig
   setLaunchAtStartup: (enabled: boolean) => void
   getStats: () => SystemStats | null
   setStats: (stats: SystemStats | null) => void
-  isWidgetVisible: (kind: 'calendar' | 'tasks') => boolean
-  showWidget: (kind: 'calendar' | 'tasks') => void
-  hideWidget: (kind: 'calendar' | 'tasks') => void
-  showDesktopWidgets: () => void
-  hideDesktopWidgets: () => void
+  getEnabledDesktopWidgets: () => TrayDesktopWidget[]
+  isWidgetVisible: (id: string) => boolean
+  isMonitorEnabled: () => boolean
+  hasNotionWidgets: () => boolean
+  hasTempDaemon: () => boolean
+  showWidget: (id: string) => void
+  hideWidget: (id: string) => void
   toggleMonitor: () => void
+  openCatalog: () => void
+  openSettings: () => void
   applyPowerMode: () => void
   applyLaunchAtStartup: () => void
   refreshNotion: (force?: boolean) => Promise<unknown>
@@ -32,21 +41,6 @@ export function createTrayMenuController(
 ) {
   /** Position fixe du menu pour éviter qu’il « saute » à la réouverture */
   let lastPos: { x: number; y: number } | undefined
-
-  function trayStatusLabel(): string {
-    const stats = deps.getStats()
-    if (!stats) return 'En attente des mesures…'
-    const temp = stats.temperatureC != null ? `${stats.temperatureC}°C` : 'temp. —'
-    return `CPU ${stats.cpuPercent}%   ·   RAM ${stats.ramPercent}%   ·   ${temp}`
-  }
-
-  function tempServiceStatusLabel(): string {
-    if (isTempServiceRunning()) {
-      const t = deps.getStats()?.temperatureC
-      return t != null ? `État : actif (${t}°C)` : 'État : actif'
-    }
-    return 'État : arrêté'
-  }
 
   function popup(): void {
     const tray = getTray()
@@ -64,112 +58,67 @@ export function createTrayMenuController(
 
   function build() {
     const config = deps.getConfig()
-    const calendarVisible = deps.isWidgetVisible('calendar')
-    const tasksVisible = deps.isWidgetVisible('tasks')
+    const desktop = deps.getEnabledDesktopWidgets()
+    const monitorEnabled = deps.isMonitorEnabled()
+    const notionEnabled = deps.hasNotionWidgets()
+    const tempDaemon = deps.hasTempDaemon()
     const tempRunning = isTempServiceRunning()
 
-    return Menu.buildFromTemplate([
-      { label: 'Lattice', enabled: false },
-      { label: trayStatusLabel(), enabled: false },
-      { type: 'separator' },
+    const template: Electron.MenuItemConstructorOptions[] = [
       {
-        label: 'Ouvrir le monitoring',
+        label: 'Catalogue des widgets…',
+        click: () => deps.openCatalog(),
+      },
+      {
+        label: 'Paramètres…',
+        click: () => deps.openSettings(),
+      },
+    ]
+
+    if (desktop.length > 0 || monitorEnabled) {
+      template.push({ type: 'separator' })
+    }
+
+    for (const w of desktop) {
+      template.push({
+        label: w.label,
+        type: 'checkbox',
+        checked: deps.isWidgetVisible(w.id),
+        click: (item) => {
+          if (item.checked) deps.showWidget(w.id)
+          else {
+            deps.hideWidget(w.id)
+            deps.applyPowerMode()
+          }
+          keepOpen()
+        },
+      })
+    }
+
+    if (monitorEnabled) {
+      template.push({
+        label: 'Monitoring',
         click: () => deps.toggleMonitor(),
-      },
-      { type: 'separator' },
-      {
-        label: 'Widgets bureau',
-        submenu: [
-          {
-            label: 'Calendrier',
-            type: 'checkbox',
-            checked: calendarVisible,
-            click: (item) => {
-              if (item.checked) deps.showWidget('calendar')
-              else {
-                deps.hideWidget('calendar')
-                deps.applyPowerMode()
-              }
-              keepOpen()
-            },
-          },
-          {
-            label: 'Tâches',
-            type: 'checkbox',
-            checked: tasksVisible,
-            click: (item) => {
-              if (item.checked) deps.showWidget('tasks')
-              else {
-                deps.hideWidget('tasks')
-                deps.applyPowerMode()
-              }
-              keepOpen()
-            },
-          },
-          { type: 'separator' },
-          {
-            label: 'Tout afficher',
-            click: () => {
-              deps.showDesktopWidgets()
-              keepOpen()
-            },
-          },
-          {
-            label: 'Tout masquer',
-            click: () => {
-              deps.hideDesktopWidgets()
-              keepOpen()
-            },
-          },
-        ],
-      },
-      {
-        label: 'Notion',
-        submenu: [
-          {
-            label: 'Rafraîchir les tâches',
-            click: () => {
-              void deps.refreshNotion(true)
-            },
-          },
-          {
-            label: 'Ouvrir le fichier config',
-            click: () => {
-              void shell.openPath(getConfigPath())
-            },
-          },
-          { type: 'separator' },
-          {
-            label: config.demoMode ? 'État : mode démo' : 'État : connecté à Notion',
-            enabled: false,
-          },
-        ],
-      },
-      {
-        label: 'Température',
-        submenu: [
-          { label: tempServiceStatusLabel(), enabled: false },
-          { type: 'separator' },
-          {
-            label: 'Activer le capteur (admin)',
-            enabled: !tempRunning,
-            click: () => {
-              void (async () => {
-                const result = await startTempDaemonElevated()
-                await dialog.showMessageBox({
-                  type: result.ok ? 'info' : 'error',
-                  title: 'Température',
-                  message: result.message,
-                })
-                if (result.ok) void deps.refreshStats(true)
-                keepOpen()
-              })()
-            },
-          },
-          {
-            label: 'Arrêter le service',
-            enabled: tempRunning,
-            click: () => {
+      })
+    }
+
+    template.push({ type: 'separator' })
+
+    if (notionEnabled) {
+      template.push({
+        label: 'Rafraîchir Notion',
+        click: () => {
+          void deps.refreshNotion(true)
+        },
+      })
+    }
+
+    if (tempDaemon) {
+      template.push({
+        label: tempRunning ? 'Arrêter la température' : 'Activer la température',
+        click: () => {
+          void (async () => {
+            if (tempRunning) {
               const result = stopTempDaemon()
               const stats = deps.getStats()
               if (stats) {
@@ -178,20 +127,37 @@ export function createTrayMenuController(
                 deps.sendStatsToMonitor(next)
               }
               deps.updateTrayTooltip()
-              void dialog.showMessageBox({
+              await dialog.showMessageBox({
                 type: 'warning',
-                title: 'Température — arrêté',
+                title: 'Température',
                 message: result.message,
-                detail: 'Le menu indique maintenant « État : arrêté ».',
               })
-              keepOpen()
-            },
-          },
-        ],
+            } else {
+              const result = await startTempDaemonElevated()
+              await dialog.showMessageBox({
+                type: result.ok ? 'info' : 'error',
+                title: 'Température',
+                message: result.message,
+              })
+              if (result.ok) void deps.refreshStats(true)
+            }
+            keepOpen()
+          })()
+        },
+      })
+    }
+
+    template.push({
+      label: 'Ouvrir la config',
+      click: () => {
+        void shell.openPath(getConfigPath())
       },
+    })
+
+    template.push(
       { type: 'separator' },
       {
-        label: 'Lancer au démarrage de Windows',
+        label: 'Lancer au démarrage',
         type: 'checkbox',
         checked: config.launchAtStartup,
         click: (item) => {
@@ -201,12 +167,13 @@ export function createTrayMenuController(
           keepOpen()
         },
       },
-      { type: 'separator' },
       {
-        label: 'Quitter Lattice',
+        label: 'Quitter',
         click: () => app.quit(),
       },
-    ])
+    )
+
+    return Menu.buildFromTemplate(template)
   }
 
   return {

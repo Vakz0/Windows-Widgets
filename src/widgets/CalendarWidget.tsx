@@ -23,20 +23,25 @@ function TaskCard({
       className="task-card no-drag"
       type="button"
       onClick={() => onOpen(task)}
-      title={task.title}
+      title={task.sourceLabel ? `${task.title} · ${task.sourceLabel}` : task.title}
     >
       <div className="task-card-row">
         <span className="task-dot" />
         <span className="task-title">{task.title}</span>
       </div>
-      {task.tag ? (
-        <span
-          className="task-tag"
-          style={{ background: task.tagColor ?? '#c4a484' }}
-        >
-          {task.tag}
-        </span>
-      ) : null}
+      <div className="task-card-footer">
+        {task.sourceLabel ? (
+          <span className="task-source">{task.sourceLabel}</span>
+        ) : null}
+        {task.tag ? (
+          <span
+            className="task-tag"
+            style={{ background: task.tagColor ?? '#c4a484' }}
+          >
+            {task.tag}
+          </span>
+        ) : null}
+      </div>
     </button>
   )
 }

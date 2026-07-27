@@ -56,6 +56,9 @@ export function TasksWidget() {
             </div>
             <div className="task-meta">
               <span>{formatFrShortDate(task.date)}</span>
+              {task.sourceLabel ? (
+                <span className="task-source">{task.sourceLabel}</span>
+              ) : null}
               {task.tag ? (
                 <span
                   className="task-tag"

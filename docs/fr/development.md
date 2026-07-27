@@ -22,6 +22,8 @@ npm run dev
 
 `npm run dev` compile le helper température, puis démarre Vite avec le plugin Electron (hot reload renderer et main).
 
+**Config en dev :** copier `config.example.json` vers `config.json` à la racine (gitignoré). Ce fichier est lu en priorité ; inclure `projectSources` pour tester les sources Notion secondaires. Voir [configuration.md](configuration.md).
+
 Pour un lancement type production :
 
 ```bash
@@ -44,18 +46,22 @@ Ou le parcours utilisateur : double-cliquer `Preparer-lancement.bat`, puis le ra
 | `pack` | Sortie electron-builder en dossier |
 | `dist` | Installateur NSIS sous `release/` |
 
+Régénérer les PNG / ICO de marque depuis les SVG : `node scripts/export-brand-assets.mjs` (nécessite `sharp` et `to-ico` en local — voir [identité visuelle](brand.md)).
+
 ## Arborescence
 
 ```
 windows-widgets/          # racine du dépôt (nom npm : lattice-desk)
 ├── electron/             # Process principal, preload, Notion, system, tray, config
+│   └── widgets/          # Registre builtin + stub plugins externes
 ├── src/                  # Renderer React
-│   └── widgets/          # Calendar, Tasks, Monitor, TaskDetailPanel
-├── shared/               # Types partagés main / renderer
+│   └── widgets/          # Catalogue, Calendar, Tasks, Monitor, registry, TaskDetailPanel
+├── shared/               # Types partagés + contrat widget (widget.ts)
 ├── tools/cpu-temp/       # Helper température C#
-├── scripts/              # lancer.ps1, creer-raccourcis.ps1
-├── assets/               # icon.png, icônes tray
-├── docs/                 # Cette documentation
+├── scripts/              # lancer.ps1, creer-raccourcis.ps1, export-brand-assets.mjs
+├── assets/               # icon.png, icon.ico, icônes tray
+│   └── brand/            # logo SVG, banner.png, social.png
+├── docs/                 # Cette documentation (dont brand.md)
 ├── Preparer-lancement.bat
 ├── Lancer-Lattice.vbs
 ├── config.example.json
@@ -73,6 +79,16 @@ windows-widgets/          # racine du dépôt (nom npm : lattice-desk)
 | `release/` | Artifacts electron-builder |
 
 </details>
+
+## Ajouter un widget builtin
+
+1. Créer le composant React sous `src/widgets/MonWidget.tsx`.
+2. L’enregistrer dans [`src/widgets/registry.tsx`](../../src/widgets/registry.tsx) (`widgetComponents`).
+3. Ajouter une `WidgetDefinition` dans [`electron/widgets/registry.ts`](../../electron/widgets/registry.ts) (id, label, description, placement, services, defaultBounds).
+4. Si le widget a besoin de nouvelles API IPC, les exposer dans `electron/main.ts` + `electron/preload.ts` + `src/vite-env.d.ts`.
+5. Documenter dans les README et [architecture.md](architecture.md) (FR + EN).
+
+Les plugins externes (`%APPDATA%/lattice-desk/widgets/`) sont prévus via [`discoverExternal.ts`](../../electron/widgets/discoverExternal.ts) mais ne sont pas chargés dans cette version.
 
 ## Packaging
 

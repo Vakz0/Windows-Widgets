@@ -1,6 +1,6 @@
 {
   "name": "lattice-desk",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Composable desktop widgets for Windows — Notion tasks/calendar + system monitoring",
   "main": "dist-electron/main.js",
   "author": "Bastien",
@@ -31,7 +31,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.ico"
     },
     "extraResources": [
       {
