@@ -51,7 +51,7 @@ export function TaskDetailPanel({
     }
 
     setLoadingDesc(true)
-    void window.widgets.getTaskDescription(task.id).then((text) => {
+    void window.lattice.getTaskDescription(task.id).then((text) => {
       if (!alive) return
       setDescription(text)
       setLoadingDesc(false)
@@ -120,7 +120,7 @@ export function TaskDetailPanel({
           className="detail-notion-btn"
           type="button"
           onClick={() => {
-            void window.widgets.openExternal(task.url)
+            void window.lattice.openExternal(task.url)
           }}
         >
           Ouvrir dans Notion

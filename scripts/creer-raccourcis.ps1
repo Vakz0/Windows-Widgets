@@ -2,14 +2,14 @@ $ErrorActionPreference = 'Stop'
 
 # Ce script est dans <projet>/scripts/
 $root = Split-Path -Parent $PSScriptRoot
-$vbs = Join-Path $root 'Lancer-Widgets.vbs'
+$vbs = Join-Path $root 'Lancer-Lattice.vbs'
 $iconPng = Join-Path $root 'assets\icon.png'
 $iconIco = Join-Path $root 'assets\icon.ico'
 $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
 $electron = Join-Path $root 'node_modules\electron\dist\electron.exe'
 
 if (-not (Test-Path $vbs)) {
-  throw "Lancer-Widgets.vbs introuvable dans $root"
+  throw "Lancer-Lattice.vbs introuvable dans $root"
 }
 
 if ((Test-Path $iconPng) -and -not (Test-Path $iconIco)) {
@@ -56,7 +56,7 @@ function New-WidgetShortcut([string]$Path) {
   $shortcut.Arguments = "//nologo `"$vbs`""
   $shortcut.WorkingDirectory = $root
   $shortcut.WindowStyle = 7
-  $shortcut.Description = 'Windows Widgets — Notion + monitoring'
+  $shortcut.Description = 'Lattice — composable desktop widgets'
   if (Test-Path $iconIco) {
     $shortcut.IconLocation = "$iconIco,0"
   } elseif (Test-Path $electron) {
@@ -69,8 +69,8 @@ function New-WidgetShortcut([string]$Path) {
 $desktop = [Environment]::GetFolderPath('Desktop')
 $startMenu = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
 
-New-WidgetShortcut (Join-Path $desktop 'Windows Widgets.lnk')
-New-WidgetShortcut (Join-Path $startMenu 'Windows Widgets.lnk')
+New-WidgetShortcut (Join-Path $desktop 'Lattice.lnk')
+New-WidgetShortcut (Join-Path $startMenu 'Lattice.lnk')
 
 Write-Host ''
 Write-Host 'OK — lance l app via le raccourci Bureau ou menu Demarrer.'

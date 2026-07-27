@@ -2,7 +2,7 @@ import type { NotionTask, PublicConfig, SystemStats } from '../shared/types'
 
 export type { NotionTask, PublicConfig, SystemStats }
 
-export interface WidgetsApi {
+export interface LatticeApi {
   getTasks: () => Promise<NotionTask[]>
   refreshTasks: () => Promise<NotionTask[]>
   getTaskDescription: (pageId: string) => Promise<string | null>
@@ -19,7 +19,7 @@ export interface WidgetsApi {
 
 declare global {
   interface Window {
-    widgets: WidgetsApi
+    lattice: LatticeApi
   }
 }
 

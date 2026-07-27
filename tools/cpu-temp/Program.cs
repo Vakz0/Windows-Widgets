@@ -30,7 +30,7 @@ static class Program
     {
         var dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "windows-widgets");
+            "lattice-desk");
         Directory.CreateDirectory(dir);
         return dir;
     }

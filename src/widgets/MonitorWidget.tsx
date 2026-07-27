@@ -89,10 +89,10 @@ export function MonitorWidget() {
 
   useEffect(() => {
     let alive = true
-    void window.widgets.getStats().then((s) => {
+    void window.lattice.getStats().then((s) => {
       if (alive) setStats(s)
     })
-    const off = window.widgets.onStatsUpdated((s) => setStats(s))
+    const off = window.lattice.onStatsUpdated((s) => setStats(s))
     return () => {
       alive = false
       off()
@@ -164,10 +164,10 @@ export function MonitorWidget() {
             onClick={() => {
               setBusy(true)
               setHint(null)
-              void window.widgets.enableTemp().then((res) => {
+              void window.lattice.enableTemp().then((res) => {
                 setHint(res.message)
                 setBusy(false)
-                void window.widgets.getStats().then(setStats)
+                void window.lattice.getStats().then(setStats)
               })
             }}
           >

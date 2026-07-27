@@ -10,6 +10,7 @@ import {
 } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
+import { migrateLegacyUserData } from './migrate'
 import {
   getConfigPath,
   loadConfig,
@@ -21,6 +22,7 @@ import { createTrayMenuController } from './trayMenu'
 import type { AppConfig, NotionTask, SystemStats, WidgetKind } from '../shared/types'
 
 // Lower Chromium cost for mostly-static widgets
+app.setName('lattice-desk')
 app.disableHardwareAcceleration()
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL
@@ -238,7 +240,7 @@ function createTrayIcon(): Electron.NativeImage {
 function updateTrayTooltip(): void {
   if (!tray) return
   if (!statsCache) {
-    tray.setToolTip('Windows Widgets')
+    tray.setToolTip('Lattice')
     return
   }
   const temp =
@@ -507,6 +509,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  migrateLegacyUserData()
   config = loadConfig()
   // Default to a gentler Notion cadence if still aggressive
   if (config.refreshIntervalSeconds < 60) {

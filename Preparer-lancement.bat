@@ -3,7 +3,7 @@ chcp 65001 >nul
 cd /d "%~dp0"
 
 echo.
-echo  Preparation de Windows Widgets...
+echo  Preparation de Lattice...
 echo  (une seule fois, ou apres une mise a jour)
 echo.
 
