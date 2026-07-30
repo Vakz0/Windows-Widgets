@@ -19,9 +19,9 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
 </p>
 
-> Widgets bureau composables pour Windows — plateforme shell : activez uniquement les widgets dont vous avez besoin (Notion, monitoring, …).
+> Composable desktop widgets for Windows — a shell platform: enable only the widgets you need (Notion, monitoring, …).
 
-## Table des matières
+## Table of contents
 
 - [Why Lattice](#why-lattice)
 - [Features](#features)
@@ -73,7 +73,7 @@ Ring gauges for CPU %, RAM %, and temperature (°C). Opens from the systray as a
 - Show / hide enabled desktop widgets (flat checkboxes)
 - Open monitoring (when enabled)
 - Refresh Notion / toggle temperature / open config (when relevant)
-- Launch at Windows startup
+- Lancer au démarrage (launch at Windows startup)
 
 ### Demo mode
 
@@ -93,7 +93,7 @@ Power modes (`active` / `idle` / `sleep`) adjust Notion and stats polling based 
 2. Launch the **Lattice** shortcut (tray icon only on a fresh install).
 3. Systray → **Catalogue des widgets…** → enable Calendar, Tasks, and/or Monitoring.
 4. Systray → **Paramètres…** → connect Notion (token + database URL). Details: [docs/en/notion.md](docs/en/notion.md) (French: [docs/fr/notion.md](docs/fr/notion.md)).
-5. Optional: systray → **Launch at Windows startup**.
+5. Optional: systray → **Lancer au démarrage**.
 
 The shortcut recompiles automatically if source files changed since the last build.
 
