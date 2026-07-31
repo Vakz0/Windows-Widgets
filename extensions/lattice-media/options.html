@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Lattice Media Bridge — Options</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      body {
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1.25rem 3rem;
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin-bottom: 0.35rem;
+      }
+      .muted {
+        color: #888;
+        font-size: 0.92rem;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 1.25rem 0 0.4rem;
+      }
+      input[type='text'] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.55rem 0.7rem;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 0.85rem;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      code {
+        font-size: 0.85em;
+      }
+      .ok {
+        color: #3a9;
+      }
+      .err {
+        color: #e55;
+      }
+      ol {
+        padding-left: 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Lattice Media Bridge</h1>
+    <p class="muted">
+      Empêche Lattice de basculer en AFK pendant qu’une vidéo ou un audio joue dans
+      le navigateur.
+    </p>
+
+    <ol>
+      <li>Activez le widget <strong>Activité</strong> dans Lattice.</li>
+      <li>
+        Ouvrez
+        <code>%APPDATA%\lattice-desk\activity\media-bridge.json</code>
+        et copiez le champ <code>token</code>.
+      </li>
+      <li>Collez le token ci-dessous et enregistrez.</li>
+    </ol>
+
+    <label for="token">Token Lattice</label>
+    <input id="token" type="text" spellcheck="false" autocomplete="off" />
+
+    <button id="save" type="button">Enregistrer</button>
+    <p id="status" class="muted"></p>
+
+    <script src="options.js"></script>
+  </body>
+</html>

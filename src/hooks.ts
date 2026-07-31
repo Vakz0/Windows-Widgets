@@ -75,13 +75,6 @@ export function toIsoDate(date: Date): string {
   return `${y}-${m}-${day}`
 }
 
-export function formatFrDay(date: Date): string {
-  return date
-    .toLocaleDateString('fr-FR', { weekday: 'short' })
-    .replace('.', '')
-    .toLowerCase() + '.'
-}
-
 export function formatFrShortDate(iso: string | null): string {
   if (!iso) return 'Sans date'
   const d = new Date(iso + 'T12:00:00')

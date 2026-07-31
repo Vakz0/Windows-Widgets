@@ -13,7 +13,14 @@ export default defineConfig({
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
-              external: ['electron', 'systeminformation', '@notionhq/client'],
+              external: [
+                'electron',
+                'electron-updater',
+                'extract-zip',
+                'systeminformation',
+                '@notionhq/client',
+                'koffi',
+              ],
             },
           },
         },

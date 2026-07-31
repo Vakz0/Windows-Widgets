@@ -1,7 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
-import type { AppConfig, WindowBounds, WidgetState } from '../shared/types'
+import type { AppConfig, WindowBounds, WidgetState, UpdatesConfig } from '../shared/types'
+
+const DEFAULT_UPDATES: UpdatesConfig = {
+  autoDownload: false,
+}
 
 const DEFAULT_CONFIG: AppConfig = {
   notionToken: '',
@@ -23,6 +27,7 @@ const DEFAULT_CONFIG: AppConfig = {
   demoMode: true,
   widgets: {},
   windows: {},
+  updates: { ...DEFAULT_UPDATES },
 }
 
 /** Legacy installs without `widgets` kept calendar + tasks always on. */
@@ -57,6 +62,11 @@ function deepMerge(base: AppConfig, patch: Partial<AppConfig>): AppConfig {
     projectSources: patch.projectSources ?? base.projectSources,
     widgets: { ...base.widgets, ...(patch.widgets ?? {}) },
     windows: { ...base.windows, ...(patch.windows ?? {}) },
+    updates: {
+      ...DEFAULT_UPDATES,
+      ...base.updates,
+      ...patch.updates,
+    },
   }
 }
 
@@ -207,6 +217,29 @@ export function isWidgetEnabledInConfig(config: AppConfig, id: string): boolean 
 
 export function getConfigPath(): string {
   return userConfigPath()
+}
+
+export function getUpdatesConfig(config: AppConfig): UpdatesConfig {
+  return {
+    autoDownload: config.updates?.autoDownload === true,
+    lastCheckedAt: config.updates?.lastCheckedAt,
+  }
+}
+
+export function setUpdatesConfig(
+  config: AppConfig,
+  patch: Partial<UpdatesConfig>,
+): AppConfig {
+  const next: AppConfig = {
+    ...config,
+    updates: {
+      ...DEFAULT_UPDATES,
+      ...config.updates,
+      ...patch,
+    },
+  }
+  saveConfig(next)
+  return next
 }
 
 function extractNotionId(input: string): string {

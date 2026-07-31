@@ -19,24 +19,78 @@ import {
   setWidgetEnabled,
   isWidgetEnabledInConfig,
   hasValidNotionCredentials,
+  getUpdatesConfig,
+  setUpdatesConfig,
 } from './config'
-import { fetchNotionTasks, fetchTaskDescription, testNotionConnection } from './notion'
+import {
+  createTask,
+  deleteTask,
+  fetchNotionTasks,
+  fetchPropertyOptions,
+  fetchTaskDescription,
+  testNotionConnection,
+  updateTaskField,
+} from './notion'
 import { getSystemStats, startTempDaemonElevated, stopTempDaemon, isTempServiceRunning } from './system'
+import {
+  clearActivityData,
+  correctActivityCategory,
+  exportActivity,
+  getActivityRules,
+  getActivitySettings,
+  getActivitySummary,
+  handleActivityResume,
+  handleActivitySuspend,
+  isActivityTrackerRunning,
+  openActivityRulesFile,
+  reloadActivityRules,
+  setActivityUpdatedListener,
+  startActivityTracker,
+  stopActivityTracker,
+  updateActivitySettings,
+} from './activity'
 import { createTrayMenuController } from './trayMenu'
 import {
   getAllWidgetDefinitions,
   getDesktopWidgetDefinitions,
   getWidgetDefinition,
 } from './widgets/registry'
+import { getExternalWidgetPackage } from './widgets/discoverExternal'
+import {
+  applyAutoDownload,
+  checkForAppUpdates,
+  downloadAppUpdate,
+  getAppUpdateState,
+  initAppUpdater,
+  installAppUpdate,
+} from './updates'
+import {
+  checkWidgetUpdates,
+  getWidgetUpdatesState,
+  initWidgetUpdater,
+  installOrUpdateWidget,
+  listRemoteCatalogWidgets,
+  updateWidgets,
+} from './widgetUpdates'
 import type {
+  ActivityCorrectionPayload,
+  ActivityDaySummary,
+  ActivityExportFormat,
+  ActivitySettings,
   AppConfig,
   CatalogWidgetInfo,
+  CreateTaskPayload,
+  CreateTaskResult,
+  DeleteTaskPayload,
+  DeleteTaskResult,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
   SystemStats,
   TaskPropertyMapping,
   TaskSourceFilters,
+  UpdateTaskFieldPayload,
+  UpdateTaskFieldResult,
 } from '../shared/types'
 import type { WidgetServiceId } from '../shared/widget'
 
@@ -165,6 +219,11 @@ function statsIntervalMs(): number {
 }
 
 function loadWidgetUrl(win: BrowserWindow, widgetId: string): void {
+  const external = getExternalWidgetPackage(widgetId)
+  if (external) {
+    void win.loadFile(external.entryFile)
+    return
+  }
   if (isDev && DEV_URL) {
     void win.loadURL(`${DEV_URL}?widget=${widgetId}`)
   } else {
@@ -526,6 +585,25 @@ function openCatalog(opts?: { view?: 'catalog' | 'settings' }): void {
   })
 }
 
+function activityWidgetIds(): string[] {
+  return enabledDefsForService('activity-tracker').map((d) => d.id)
+}
+
+function pushActivitySummary(summary: ActivityDaySummary): void {
+  sendTo(activityWidgetIds(), 'activity-updated', summary)
+}
+
+function syncActivityService(): void {
+  const needed = hasService('activity-tracker')
+  if (needed && !isActivityTrackerRunning()) {
+    setActivityUpdatedListener(pushActivitySummary)
+    startActivityTracker()
+  } else if (!needed && isActivityTrackerRunning()) {
+    stopActivityTracker()
+    setActivityUpdatedListener(null)
+  }
+}
+
 function recomputeServices(): void {
   if (!hasService('notion')) {
     tasksCache = []
@@ -537,6 +615,7 @@ function recomputeServices(): void {
     stopTempDaemon()
   }
 
+  syncActivityService()
   applyPowerMode(true)
 }
 
@@ -696,11 +775,13 @@ function applyPowerMode(force = false): void {
 function setupPowerManagement(): void {
   const enterSleep = () => {
     sleeping = true
+    handleActivitySuspend()
     applyPowerMode(true)
   }
   const leaveSleep = () => {
     sleeping = false
     applyPowerMode(true)
+    handleActivityResume()
     if (hasService('notion')) void refreshNotion(true)
     void refreshStats(monitorVisible)
   }
@@ -730,6 +811,7 @@ function toPublicConfig(): PublicConfig {
       completedStatusValues: [...(config.filters.completedStatusValues ?? [])],
     },
     projectSourcesCount: config.projectSources?.length ?? 0,
+    updates: getUpdatesConfig(config),
   }
 }
 
@@ -753,6 +835,66 @@ function registerIpc(): void {
       return null
     }
   })
+  ipcMain.handle(
+    'get-property-options',
+    async (_e, databaseId: string, propertyName: string) => {
+      if (!hasService('notion') || !databaseId || !propertyName) return []
+      return fetchPropertyOptions(config, databaseId, propertyName)
+    },
+  )
+  ipcMain.handle(
+    'update-task-field',
+    async (_e, payload: UpdateTaskFieldPayload): Promise<UpdateTaskFieldResult> => {
+      if (!hasService('notion') || !payload?.pageId) {
+        return { ok: false, message: 'Service Notion indisponible.' }
+      }
+      const cached = tasksCache.find((t) => t.id === payload.pageId)
+      if (!cached) return { ok: false, message: 'Tâche introuvable.' }
+
+      const result = await updateTaskField(config, payload, cached)
+      if (!result.ok || !result.task) return result
+
+      const hideDone =
+        (cached.sourceLabel
+          ? config.projectSources?.find((s) => s.label === cached.sourceLabel)?.filters
+              .hideCompleted
+          : config.filters.hideCompleted) ?? config.filters.hideCompleted
+
+      if (hideDone && result.task.done) {
+        tasksCache = tasksCache.filter((t) => t.id !== result.task!.id)
+      } else {
+        tasksCache = tasksCache.map((t) => (t.id === result.task!.id ? result.task! : t))
+      }
+      sendTo(notionWidgetIds(), 'tasks-updated', tasksCache)
+      return result
+    },
+  )
+  ipcMain.handle(
+    'create-task',
+    async (_e, payload: CreateTaskPayload): Promise<CreateTaskResult> => {
+      if (!hasService('notion')) {
+        return { ok: false, message: 'Service Notion indisponible.' }
+      }
+      const result = await createTask(config, payload)
+      if (!result.ok || !result.task) return result
+      tasksCache = [...tasksCache.filter((t) => t.id !== result.task!.id), result.task]
+      sendTo(notionWidgetIds(), 'tasks-updated', tasksCache)
+      return result
+    },
+  )
+  ipcMain.handle(
+    'delete-task',
+    async (_e, payload: DeleteTaskPayload): Promise<DeleteTaskResult> => {
+      if (!hasService('notion') || !payload?.pageId) {
+        return { ok: false, message: 'Service Notion indisponible.' }
+      }
+      const result = await deleteTask(config, payload)
+      if (!result.ok) return result
+      tasksCache = tasksCache.filter((t) => t.id !== payload.pageId)
+      sendTo(notionWidgetIds(), 'tasks-updated', tasksCache)
+      return result
+    },
+  )
   ipcMain.handle('get-stats', async () => {
     if (!statsCache) await refreshStats(true)
     return statsCache
@@ -766,6 +908,7 @@ function registerIpc(): void {
         refreshIntervalSeconds?: number
         demoMode?: boolean
         launchAtStartup?: boolean
+        updates?: { autoDownload?: boolean }
       },
     ) => {
       if (!patch || typeof patch !== 'object') {
@@ -795,6 +938,12 @@ function registerIpc(): void {
       ) {
         config.launchAtStartup = patch.launchAtStartup
         applyLaunchAtStartup()
+      }
+      if (typeof patch.updates?.autoDownload === 'boolean') {
+        config = setUpdatesConfig(config, {
+          autoDownload: patch.updates.autoDownload,
+        })
+        applyAutoDownload(patch.updates.autoDownload)
       }
 
       saveConfig(config)
@@ -943,6 +1092,78 @@ function registerIpc(): void {
     return startTempDaemonElevated()
   })
   ipcMain.handle('disable-temp', () => stopTempDaemon())
+
+  ipcMain.handle('get-activity-summary', (_e, date?: string) => getActivitySummary(date))
+  ipcMain.handle('get-activity-settings', () => getActivitySettings())
+  ipcMain.handle(
+    'update-activity-settings',
+    (_e, patch: Partial<ActivitySettings>) => {
+      if (!hasService('activity-tracker')) {
+        return getActivitySettings()
+      }
+      return updateActivitySettings(patch ?? {})
+    },
+  )
+  ipcMain.handle('get-activity-rules', () => getActivityRules())
+  ipcMain.handle('reload-activity-rules', () => reloadActivityRules())
+  ipcMain.handle('open-activity-rules', async () => {
+    await openActivityRulesFile()
+  })
+  ipcMain.handle(
+    'export-activity',
+    async (
+      _e,
+      opts: { format: ActivityExportFormat; from?: string; to?: string },
+    ) => {
+      if (!hasService('activity-tracker')) {
+        return { ok: false, message: 'Activez le widget Activité pour exporter.' }
+      }
+      return exportActivity(opts ?? { format: 'json' })
+    },
+  )
+  ipcMain.handle(
+    'correct-activity-category',
+    (_e, payload: ActivityCorrectionPayload) => {
+      if (!hasService('activity-tracker')) {
+        return { ok: false, message: 'Activez le widget Activité.' }
+      }
+      return correctActivityCategory(payload)
+    },
+  )
+  ipcMain.handle('clear-activity-data', () => {
+    if (!hasService('activity-tracker')) {
+      return {
+        ok: false,
+        message: 'Activez le widget Activité.',
+        summary: getActivitySummary(),
+      }
+    }
+    return clearActivityData()
+  })
+
+  ipcMain.handle('get-app-update-status', () => getAppUpdateState())
+  ipcMain.handle('check-app-update', () => checkForAppUpdates({ silent: false }))
+  ipcMain.handle('download-app-update', () => {
+    downloadAppUpdate()
+    return getAppUpdateState()
+  })
+  ipcMain.handle('install-app-update', () => {
+    installAppUpdate()
+    return { ok: true }
+  })
+
+  ipcMain.handle('get-widget-update-status', () => getWidgetUpdatesState())
+  ipcMain.handle('check-widget-updates', () => checkWidgetUpdates({ silent: false }))
+  ipcMain.handle('update-widgets', (_e, ids?: string[]) =>
+    updateWidgets(Array.isArray(ids) ? ids : undefined),
+  )
+  ipcMain.handle('install-widget', (_e, id: string) => {
+    if (!id || typeof id !== 'string') {
+      return { ok: false, message: 'Id widget invalide.' }
+    }
+    return installOrUpdateWidget(id)
+  })
+  ipcMain.handle('list-remote-widgets', () => listRemoteCatalogWidgets())
 }
 
 app.whenReady().then(() => {
@@ -957,7 +1178,28 @@ app.whenReady().then(() => {
   setupTray()
   setupPowerManagement()
 
+  initAppUpdater({
+    getAutoDownload: () => getUpdatesConfig(config).autoDownload,
+    markChecked: () => {
+      config = setUpdatesConfig(config, {
+        lastCheckedAt: new Date().toISOString(),
+      })
+    },
+    openSettings: () => openCatalog({ view: 'settings' }),
+  })
+
+  initWidgetUpdater({
+    getAutoDownload: () => getUpdatesConfig(config).autoDownload,
+    getAppVersion: () => app.getVersion(),
+    openSettings: () => openCatalog({ view: 'settings' }),
+    onWidgetsInstalled: () => {
+      broadcastWidgetsChanged()
+      recomputeServices()
+    },
+  })
+
   bootEnabledWidgets()
+  syncActivityService()
 
   void getSystemStats({ includeTemp: false }).then(() => {
     void refreshStats(false)
@@ -968,6 +1210,11 @@ app.whenReady().then(() => {
 
   powerMode = computePowerMode()
   scheduleTimers()
+
+  setTimeout(() => {
+    void checkForAppUpdates({ silent: true })
+    void checkWidgetUpdates({ silent: true })
+  }, 8_000)
 })
 
 app.on('window-all-closed', () => {
@@ -980,4 +1227,5 @@ app.on('before-quit', () => {
   for (const t of Object.values(boundsTimers)) {
     if (t) clearTimeout(t)
   }
+  if (isActivityTrackerRunning()) stopActivityTracker()
 })
