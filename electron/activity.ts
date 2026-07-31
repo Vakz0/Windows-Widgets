@@ -26,7 +26,16 @@ import type {
   ActivitySegment,
   ActivitySettings,
   ActivitySiteBreakdown,
+  ActivityTaskBreakdown,
 } from '../shared/types'
+import {
+  clearFocusJournalFile,
+  evaluateFocusGuard,
+  getFocusAttribution,
+  getFocusSession,
+  readFocusJournalInRange,
+  stopFocusSession,
+} from './focusSession'
 import {
   invalidateWatchCache,
   isMediaKeepAwakeActive,
@@ -67,6 +76,7 @@ const DEFAULT_SETTINGS: ActivitySettings = {
   idleThresholdSec: 180,
   browserDetail: 'domain',
   parseIdeTitles: true,
+  focusOffProjectDwellSec: 8,
 }
 
 const DEFAULT_RULES: ActivityRules = {
@@ -662,6 +672,7 @@ function buildSummary(date: string, live?: ActivitySegment | null): ActivityDayS
   >()
   const siteMs = new Map<string, { ms: number; category: ActivityCategory }>()
   const projectMs = new Map<string, number>()
+  const taskMs = new Map<string, { title: string; ms: number }>()
   let totalMs = 0
 
   for (const seg of segments) {
@@ -693,6 +704,15 @@ function buildSummary(date: string, live?: ActivitySegment | null): ActivityDayS
     if (seg.projectName) {
       projectMs.set(seg.projectName, (projectMs.get(seg.projectName) ?? 0) + ms)
     }
+    if (seg.notionTaskId) {
+      const t = taskMs.get(seg.notionTaskId) ?? {
+        title: seg.notionTaskTitle || 'Sans titre',
+        ms: 0,
+      }
+      t.ms += ms
+      if (seg.notionTaskTitle) t.title = seg.notionTaskTitle
+      taskMs.set(seg.notionTaskId, t)
+    }
   }
 
   const topApps: ActivityAppBreakdown[] = [...appMs.entries()]
@@ -715,6 +735,15 @@ function buildSummary(date: string, live?: ActivitySegment | null): ActivityDayS
     .sort((a, b) => b.ms - a.ms)
     .slice(0, 6)
 
+  const topTasks: ActivityTaskBreakdown[] = [...taskMs.entries()]
+    .map(([notionTaskId, v]) => ({
+      notionTaskId,
+      title: v.title,
+      ms: v.ms,
+    }))
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 8)
+
   const topWatch = getTopWatch(date, 8, rules.userDomainOverrides)
 
   return {
@@ -731,6 +760,8 @@ function buildSummary(date: string, live?: ActivitySegment | null): ActivityDayS
     urlHelperAvailable: isActiveUrlHelperAvailable(),
     mediaKeepAwake: isMediaKeepAwakeActive(),
     topWatch,
+    focusSession: getFocusSession(),
+    topTasks,
   }
 }
 
@@ -781,6 +812,24 @@ function sameFocus(a: ActivitySegment, b: ActivitySegment): boolean {
   )
 }
 
+function applyFocusAttribution(seg: ActivitySegment): ActivitySegment {
+  const attr = getFocusAttribution()
+  if (!attr || seg.ignored || seg.category === 'afk') {
+    return {
+      ...seg,
+      focusSessionId: null,
+      notionTaskId: null,
+      notionTaskTitle: null,
+    }
+  }
+  return {
+    ...seg,
+    focusSessionId: attr.focusSessionId,
+    notionTaskId: attr.notionTaskId,
+    notionTaskTitle: attr.notionTaskTitle,
+  }
+}
+
 function makeSegment(opts: {
   now: Date
   app: string
@@ -798,7 +847,7 @@ function makeSegment(opts: {
   projectName: string | null
   ignored: boolean
 }): ActivitySegment {
-  return {
+  return applyFocusAttribution({
     start: opts.now.toISOString(),
     end: opts.now.toISOString(),
     app: opts.app,
@@ -818,7 +867,7 @@ function makeSegment(opts: {
     fileName: opts.fileName,
     projectName: opts.projectName,
     ignored: opts.ignored,
-  }
+  })
 }
 
 async function pollOnce(): Promise<void> {
@@ -927,6 +976,29 @@ async function pollOnce(): Promise<void> {
       ignored,
     })
 
+    const guard = evaluateFocusGuard({
+      nowMs,
+      app,
+      title: next.title,
+      domain,
+      projectName,
+      ignored,
+      idle,
+      dwellSec: settings.focusOffProjectDwellSec,
+    })
+    if (guard.interrupted) {
+      pendingSwitch = null
+      closeOpenSegment(now)
+      openSegment = applyFocusAttribution({
+        ...next,
+        start: now.toISOString(),
+        end: now.toISOString(),
+        prevApp: lastApp && lastApp !== next.app ? lastApp : null,
+      })
+      emitSummary()
+      return
+    }
+
     if (!openSegment) {
       openSegment = next
       pendingSwitch = null
@@ -936,7 +1008,26 @@ async function pollOnce(): Promise<void> {
 
     if (sameFocus(openSegment, next)) {
       pendingSwitch = null
-      openSegment.end = now.toISOString()
+      // Re-tag if focus session started/stopped mid-segment.
+      const retagged = applyFocusAttribution({
+        ...openSegment,
+        end: now.toISOString(),
+      })
+      const attrChanged =
+        (openSegment.notionTaskId ?? null) !== (retagged.notionTaskId ?? null) ||
+        (openSegment.focusSessionId ?? null) !== (retagged.focusSessionId ?? null)
+      if (attrChanged) {
+        closeOpenSegment(now)
+        openSegment = {
+          ...retagged,
+          start: now.toISOString(),
+          end: now.toISOString(),
+        }
+        pollsSinceFlush = 0
+        emitSummary()
+        return
+      }
+      openSegment = retagged
       pollsSinceFlush += 1
       if (pollsSinceFlush >= FLUSH_EVERY_POLLS) {
         const snap = { ...openSegment }
@@ -1046,6 +1137,29 @@ export function getActivitySummary(date?: string): ActivityDaySummary {
   return lastSummary
 }
 
+/** Contexte focus courant pour initialiser l’allowlist d’une session. */
+export function getActivityFocusSeed(): {
+  apps: string[]
+  domains: string[]
+  ideProjects: string[]
+} {
+  const live = liveOpenSegment() ?? openSegment
+  const apps: string[] = []
+  const domains: string[] = []
+  const ideProjects: string[] = []
+  if (live && !live.ignored && live.category !== 'afk') {
+    if (live.app) apps.push(live.app)
+    if (live.domain) domains.push(live.domain)
+    if (live.projectName) ideProjects.push(live.projectName)
+  }
+  return { apps, domains, ideProjects }
+}
+
+/** Force un refresh du résumé (ex. changement de session focus). */
+export function refreshActivitySummary(): void {
+  if (running) emitSummary()
+}
+
 export function getActivitySettings(): ActivitySettings {
   loadActivityState()
   return { ...settings }
@@ -1070,6 +1184,13 @@ export function updateActivitySettings(
   }
   if (typeof patch.parseIdeTitles === 'boolean') {
     settings.parseIdeTitles = patch.parseIdeTitles
+  }
+  if (
+    typeof patch.focusOffProjectDwellSec === 'number' &&
+    patch.focusOffProjectDwellSec >= 3 &&
+    patch.focusOffProjectDwellSec <= 120
+  ) {
+    settings.focusOffProjectDwellSec = Math.round(patch.focusOffProjectDwellSec)
   }
   saveJsonFile(settingsPath(), settings)
 
@@ -1345,6 +1466,7 @@ export async function exportActivity(opts: {
     const day = e.at.slice(0, 10)
     return day >= from && day <= to
   })
+  const focusJournal = readFocusJournalInRange(from, to)
 
   const defaultName =
     opts.format === 'csv'
@@ -1371,6 +1493,7 @@ export async function exportActivity(opts: {
         exportedAt: new Date().toISOString(),
         segments,
         feedback,
+        focusJournal,
         transitions: buildTransitions(segments),
         summaries: dates.map((d) => buildSummary(d)),
         watchByDay: Object.fromEntries(dates.map((d) => [d, readWatchMap(d)])),
@@ -1398,9 +1521,13 @@ export async function exportActivity(opts: {
         'fileName',
         'projectName',
         'ignored',
+        'focusSessionId',
+        'notionTaskId',
+        'notionTaskTitle',
       ].join(',')
       const rows = segments.map((s) => {
         const title = (s.title ?? '').replace(/"/g, '""')
+        const taskTitle = (s.notionTaskTitle ?? '').replace(/"/g, '""')
         return [
           s.start,
           s.end,
@@ -1422,6 +1549,9 @@ export async function exportActivity(opts: {
           s.fileName ?? '',
           s.projectName ?? '',
           s.ignored ? '1' : '0',
+          s.focusSessionId ?? '',
+          s.notionTaskId ?? '',
+          `"${taskTitle}"`,
         ].join(',')
       })
       const watchHeader = 'date,domain,watchMs,kind'
@@ -1491,6 +1621,8 @@ export function clearActivityData(): {
       fs.unlinkSync(feedbackPath())
       removed += 1
     }
+    clearFocusJournalFile()
+    stopFocusSession()
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Échec de la suppression.'
     emitSummary()

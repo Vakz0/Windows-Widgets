@@ -496,6 +496,23 @@ export function CalendarWidget() {
     }
   }
 
+  async function handleStartFocus(task: NotionTask) {
+    setContextMenu(null)
+    setActionError(null)
+    try {
+      const result = await window.lattice.startFocusSession({
+        notionTaskId: task.id,
+        notionTaskTitle: task.title,
+        databaseId: task.databaseId,
+      })
+      if (!result.ok) {
+        setActionError(result.message ?? 'Impossible de démarrer la session focus.')
+      }
+    } catch (err) {
+      setActionError(String(err))
+    }
+  }
+
   if (selected) {
     return (
       <div className="widget-shell">
@@ -649,6 +666,14 @@ export function CalendarWidget() {
             }}
           >
             Ouvrir
+          </button>
+          <button
+            type="button"
+            className="cal-context-item"
+            role="menuitem"
+            onClick={() => void handleStartFocus(contextMenu.task)}
+          >
+            Travailler dessus
           </button>
           {contextMenu.confirm ? (
             <button

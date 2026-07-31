@@ -290,6 +290,67 @@ export interface ActivitySegment {
   projectName?: string | null
   /** True = Lattice / apps ignorées — hors totaux et tops. */
   ignored?: boolean
+  /** Session focus Notion active au moment du segment. */
+  focusSessionId?: string | null
+  /** Page Notion à laquelle le temps est imputé. */
+  notionTaskId?: string | null
+  /** Titre snapshot de la tâche Notion. */
+  notionTaskTitle?: string | null
+}
+
+export type FocusSessionStatus = 'active' | 'interrupted' | 'paused'
+
+export interface FocusAllowlist {
+  apps: string[]
+  domains: string[]
+  ideProjects: string[]
+}
+
+export interface FocusSession {
+  id: string
+  notionTaskId: string
+  notionTaskTitle: string
+  databaseId: string
+  startedAt: string
+  status: FocusSessionStatus
+  allowlist: FocusAllowlist
+}
+
+export type FocusInterruptAction = 'resume' | 'allow_once' | 'pause' | 'stop'
+
+export interface FocusJournalEntry {
+  ts: string
+  sessionId: string
+  notionTaskId: string
+  app: string
+  title: string | null
+  domain: string | null
+  projectName: string | null
+  note: string
+  action: FocusInterruptAction
+}
+
+export interface FocusInterruptContext {
+  app: string
+  title: string | null
+  domain: string | null
+  projectName: string | null
+  notionTaskId: string
+  notionTaskTitle: string
+  sessionId: string
+}
+
+export interface StartFocusSessionPayload {
+  notionTaskId: string
+  notionTaskTitle: string
+  databaseId: string
+  /** Suggestions initiales optionnelles (projet IDE courant, etc.). */
+  seedAllowlist?: Partial<FocusAllowlist>
+}
+
+export interface ResolveFocusInterruptPayload {
+  action: FocusInterruptAction
+  note?: string
 }
 
 export interface ActivityAppBreakdown {
@@ -307,6 +368,12 @@ export interface ActivitySiteBreakdown {
 
 export interface ActivityProjectBreakdown {
   projectName: string
+  ms: number
+}
+
+export interface ActivityTaskBreakdown {
+  notionTaskId: string
+  title: string
   ms: number
 }
 
@@ -349,6 +416,10 @@ export interface ActivityDaySummary {
   mediaKeepAwake: boolean
   /** Temps de visionnage (extension, lecture réelle) par domaine. */
   topWatch: ActivitySiteBreakdown[]
+  /** Session focus Notion en cours (null si aucune). */
+  focusSession: FocusSession | null
+  /** Temps imputé aux tâches Notion (agrégat local du jour). */
+  topTasks: ActivityTaskBreakdown[]
 }
 
 export interface ActivitySettings {
@@ -360,6 +431,8 @@ export interface ActivitySettings {
   browserDetail: ActivityBrowserDetail
   /** Parser les titres Cursor / VS Code / Slack. */
   parseIdeTitles: boolean
+  /** Secondes hors allowlist avant interruption focus (défaut 8). */
+  focusOffProjectDwellSec: number
 }
 
 export interface ActivityTitlePattern {

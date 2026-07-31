@@ -12,11 +12,12 @@ Widget Lattice de suivi du temps passé sur le PC, avec **contexte logiciel** (d
 - **IDE** : parse Cursor / VS Code → fichier + projet
 - Classification : domaine → règles titre → app → Autre
 - Correction manuelle → `feedback.jsonl` + règles (apps, titres, **domaines**)
-- Widget : résumé, top apps / **sites** / **projets**, maintenant, **historique jour par jour**
-- Options : pause, Web, titres, parse IDE, seuil AFK
+- Widget : résumé, top apps / **sites** / **projets** / **tâches Notion**, maintenant, **historique jour par jour**
+- Options : pause, Web, titres, parse IDE, seuil AFK, délai interruption focus
+- **Sessions focus Notion** : imputer le temps à une tâche + garde-fou allowlist (voir ci-dessous)
 - **Extension navigateur** (optionnelle) : lecture média → pas d’AFK + **temps de visionnage** par site (`extensions/lattice-media`)
-- Export CSV / JSON enrichi
-- Bouton **Effacer…** : supprime l’historique (`days/`) et le feedback ; conserve `rules.json` / settings
+- Export CSV / JSON enrichi (segments + journal focus)
+- Bouton **Effacer…** : supprime l’historique (`days/`), le feedback et le journal focus ; conserve `rules.json` / settings
 
 ## Ce qui n’est pas compté
 
@@ -33,6 +34,20 @@ Widget Lattice de suivi du temps passé sur le PC, avec **contexte logiciel** (d
 - **Titres off** : pas de texte de titre ; `titleHash` conservé
 - Pas de sync cloud, pas de frappe, pas de captures
 
+## Sessions focus (Notion)
+
+But : travailler **uniquement** sur une tâche Notion, chronométrer ce temps, et s’interrompre si l’activité sort de l’allowlist.
+
+1. Widget **Activité** activé (service `activity-tracker`)
+2. Depuis **Tâches** / **Calendrier** : menu contextuel ou détail → **Travailler dessus**
+3. Le bandeau **Session focus** dans Activité montre la tâche, l’état (active / pause / interrompue) et l’allowlist (apps, domaines, projets IDE)
+4. Hors allowlist pendant le délai configuré (défaut **8 s**, option `Focus: Ns`) → fenêtre d’interruption : expliquer ce que vous faites, puis reprendre / autoriser cette fois / pause / terminer
+5. Les notes vont dans `focus-journal.jsonl` ; le temps imputé apparaît dans **Temps par tâche** et l’export
+
+Allowlist initiale : apps travail courantes (`cursor`, `code`, `notion`…) + contexte focus courant (projet IDE / domaine). Les widgets Lattice et l’AFK ne déclenchent pas d’interruption.
+
+L’imputation est **locale** (id de page Notion sur les segments) — pas d’écriture d’une propriété « temps passé » dans Notion en V1.
+
 ## Limites
 
 - Focus uniquement (pas les apps en fond)
@@ -44,9 +59,11 @@ Widget Lattice de suivi du temps passé sur le PC, avec **contexte logiciel** (d
 
 | Chemin | Rôle |
 | --- | --- |
-| `activity/settings.json` | Pause, titres, AFK, `browserDetail`, `parseIdeTitles` |
+| `activity/settings.json` | Pause, titres, AFK, `browserDetail`, `parseIdeTitles`, `focusOffProjectDwellSec` |
 | `activity/rules.json` | Apps, motifs titre, overrides app/domaine, `ignoredApps` |
 | `activity/feedback.jsonl` | Corrections |
+| `activity/focus-session.json` | Session focus en cours (reprise au redémarrage) |
+| `activity/focus-journal.jsonl` | Notes d’interruption (explications hors projet) |
 | `activity/days/YYYY-MM-DD.jsonl` | Segments |
 | `activity/days/YYYY-MM-DD.watch.json` | Temps de visionnage (extension) par domaine |
 | `activity/media-bridge.json` | Token + endpoint pour l’extension média (généré au démarrage) |
@@ -78,6 +95,9 @@ Contexte :
 | `contextKind` | `browser` / `ide` / `chat` |
 | `fileName` | `activity.ts` |
 | `projectName` | `windows-widgets` |
+| `focusSessionId` | UUID de session focus |
+| `notionTaskId` | Id de page Notion |
+| `notionTaskTitle` | Titre snapshot de la tâche |
 
 ### Classification
 

@@ -221,6 +221,9 @@ export function TaskDetailPanel({
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [focusBusy, setFocusBusy] = useState(false)
+  const [focusHint, setFocusHint] = useState<string | null>(null)
+  const [focusHintError, setFocusHintError] = useState(false)
   const [optionsByProp, setOptionsByProp] = useState<Record<string, NotionPropertyOption[]>>({})
   const [loadingOptions, setLoadingOptions] = useState<string | null>(null)
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
@@ -230,7 +233,33 @@ export function TaskDetailPanel({
     setDescription(task.description ?? '')
     setError(null)
     setConfirmDelete(false)
+    setFocusHint(null)
+    setFocusHintError(false)
   }, [task])
+
+  async function handleStartFocus() {
+    setFocusBusy(true)
+    setFocusHint(null)
+    setFocusHintError(false)
+    try {
+      const res = await window.lattice.startFocusSession({
+        notionTaskId: draft.id,
+        notionTaskTitle: draft.title,
+        databaseId: draft.databaseId,
+      })
+      if (!res.ok) {
+        setFocusHint(res.message ?? 'Impossible de démarrer la session.')
+        setFocusHintError(true)
+        return
+      }
+      setFocusHint(`Session focus : ${draft.title}`)
+    } catch (err) {
+      setFocusHint(err instanceof Error ? err.message : 'Session focus impossible.')
+      setFocusHintError(true)
+    } finally {
+      setFocusBusy(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -437,6 +466,15 @@ export function TaskDetailPanel({
             <IconTrash />
           </button>
         )}
+        <button
+          className="task-detail-focus-btn"
+          type="button"
+          disabled={saving || focusBusy}
+          title="Démarrer une session focus Activité sur cette tâche"
+          onClick={() => void handleStartFocus()}
+        >
+          {focusBusy ? '…' : 'Travailler dessus'}
+        </button>
         {draft.url ? (
           <button
             className="icon-btn"
@@ -451,6 +489,11 @@ export function TaskDetailPanel({
           </button>
         ) : null}
       </div>
+      {focusHint ? (
+        <div className={`task-detail-focus-hint${focusHintError ? ' is-error' : ''}`}>
+          {focusHint}
+        </div>
+      ) : null}
 
       {error ? <div className="error-banner">{error}</div> : null}
 
