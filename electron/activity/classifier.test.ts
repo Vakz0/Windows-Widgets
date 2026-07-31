@@ -59,11 +59,7 @@ describe('titlePatternFromSample', () => {
   })
 
   it('extracts domain-like tokens', () => {
-<<<<<<< HEAD
     expect(titlePatternFromSample('https://www.github.com/foo')).toBe('github.com')
-=======
-    expect(titlePatternFromSample('https://www.github.com/foo')).toBe('github\\.com')
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   })
 
   it('extracts text before dash separator', () => {

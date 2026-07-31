@@ -20,18 +20,14 @@ export type CompiledTitlePattern = {
   pattern: string
 }
 
-<<<<<<< HEAD
 function escapeRegexToken(token: string): string {
   return token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-=======
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export function rebuildCompiledPatterns(rules: ActivityRules): CompiledTitlePattern[] {
   const out: CompiledTitlePattern[] = []
   for (const rule of rules.titlePatterns) {
     try {
-<<<<<<< HEAD
       // Patterns are matched literally (escaped) to avoid ReDoS / injection from rules files.
       out.push({
         re: new RegExp(escapeRegexToken(rule.pattern), 'i'),
@@ -40,15 +36,6 @@ export function rebuildCompiledPatterns(rules: ActivityRules): CompiledTitlePatt
       })
     } catch (err) {
       console.debug('compileTitlePatterns: skip invalid pattern', err)
-=======
-      out.push({
-        re: new RegExp(rule.pattern, 'i'),
-        category: rule.category,
-        pattern: rule.pattern,
-      })
-    } catch {
-      /* skip invalid pattern */
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   return out
@@ -122,13 +109,6 @@ export function classify(
   }
 }
 
-<<<<<<< HEAD
-=======
-function escapeRegexToken(token: string): string {
-  return token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 /** Extract a stable token from a title for a title-scope rule (domain-like or significant word). */
 export function titlePatternFromSample(titleSample: string): string | null {
   const trimmed = titleSample.trim()
@@ -136,7 +116,6 @@ export function titlePatternFromSample(titleSample: string): string | null {
   const domain = trimmed.match(
     /(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+(?:\.[a-z]{2,})+)/i,
   )
-<<<<<<< HEAD
   // Return raw tokens; rebuildCompiledPatterns escapes before new RegExp.
   if (domain?.[1]) return domain[1].toLowerCase()
   const beforeDash = trimmed.split(/\s[-–—|]\s/)[0]?.trim()
@@ -145,15 +124,6 @@ export function titlePatternFromSample(titleSample: string): string | null {
   }
   const word = trimmed.match(/[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 ._-]{2,31}/)
   return word ? word[0].trim() : null
-=======
-  if (domain?.[1]) return escapeRegexToken(domain[1].toLowerCase())
-  const beforeDash = trimmed.split(/\s[-–—|]\s/)[0]?.trim()
-  if (beforeDash && beforeDash.length >= 3 && beforeDash.length <= 48) {
-    return escapeRegexToken(beforeDash.slice(0, 48))
-  }
-  const word = trimmed.match(/[A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 ._-]{2,31}/)
-  return word ? escapeRegexToken(word[0].trim()) : null
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
 
 export function isIgnoredApp(appKey: string, rules: ActivityRules, defaultIgnored: string[]): boolean {

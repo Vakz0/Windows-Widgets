@@ -36,11 +36,7 @@ describe('title-scope correction guard', () => {
     const result = prepareTitleCorrection('github.com — Pull request')
     expect(result.ok).toBe(true)
     if (result.ok) {
-<<<<<<< HEAD
       expect(result.pattern).toBe('github.com')
-=======
-      expect(result.pattern).toBe('github\\.com')
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   })
 })

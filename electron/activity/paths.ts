@@ -1,8 +1,5 @@
 import fs from 'node:fs'
-<<<<<<< HEAD
 import fsp from 'node:fs/promises'
-=======
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import path from 'node:path'
 import { app } from 'electron'
 
@@ -14,36 +11,65 @@ export function daysDir(): string {
   return path.join(activityDir(), 'days')
 }
 
+/** Resolve `segments` under `baseDir`, rejecting `..` and escapes outside the base. */
+export function resolveWithin(baseDir: string, ...segments: string[]): string {
+  for (const seg of segments) {
+    if (!seg || seg === '.' || seg === '..' || seg.includes('\0') || /[/\\]/.test(seg)) {
+      throw new Error(`Invalid path segment: ${seg}`)
+    }
+  }
+  const base = path.resolve(baseDir)
+  const resolved = path.resolve(base, ...segments)
+  const rel = path.relative(base, resolved)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`Path escapes base directory: ${resolved}`)
+  }
+  return resolved
+}
+
+/** Ensure an already-built path stays inside `baseDir`. */
+export function assertWithin(baseDir: string, candidate: string): string {
+  const base = path.resolve(baseDir)
+  const resolved = path.resolve(candidate)
+  const rel = path.relative(base, resolved)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`Path escapes base directory: ${resolved}`)
+  }
+  return resolved
+}
+
 export function settingsPath(): string {
-  return path.join(activityDir(), 'settings.json')
+  return resolveWithin(activityDir(), 'settings.json')
 }
 
 export function rulesPath(): string {
-  return path.join(activityDir(), 'rules.json')
+  return resolveWithin(activityDir(), 'rules.json')
 }
 
 export function feedbackPath(): string {
-  return path.join(activityDir(), 'feedback.jsonl')
+  return resolveWithin(activityDir(), 'feedback.jsonl')
 }
 
 export function dayFile(date: string): string {
-  return path.join(daysDir(), `${date}.jsonl`)
+  if (!isDayKey(date)) throw new Error(`Invalid day key: ${date}`)
+  return resolveWithin(daysDir(), `${date}.jsonl`)
 }
 
 export function bridgeMetaPath(): string {
-  return path.join(activityDir(), 'media-bridge.json')
+  return resolveWithin(activityDir(), 'media-bridge.json')
 }
 
 export function watchPath(date: string): string {
-  return path.join(daysDir(), `${date}.watch.json`)
+  if (!isDayKey(date)) throw new Error(`Invalid day key: ${date}`)
+  return resolveWithin(daysDir(), `${date}.watch.json`)
 }
 
 export function focusSessionPath(): string {
-  return path.join(activityDir(), 'focus-session.json')
+  return resolveWithin(activityDir(), 'focus-session.json')
 }
 
 export function focusJournalPath(): string {
-  return path.join(activityDir(), 'focus-journal.jsonl')
+  return resolveWithin(activityDir(), 'focus-journal.jsonl')
 }
 
 export function ensureDirs(): void {
@@ -61,7 +87,6 @@ export function todayKey(d = new Date()): string {
   return `${y}-${m}-${day}`
 }
 
-<<<<<<< HEAD
 export async function listDayFilesInRange(from: string, to: string): Promise<string[]> {
   ensureDirs()
   const dir = daysDir()
@@ -72,13 +97,6 @@ export async function listDayFilesInRange(from: string, to: string): Promise<str
   }
   const keys = new Set<string>()
   for (const f of await fsp.readdir(dir)) {
-=======
-export function listDayFilesInRange(from: string, to: string): string[] {
-  ensureDirs()
-  if (!fs.existsSync(daysDir())) return []
-  const keys = new Set<string>()
-  for (const f of fs.readdirSync(daysDir())) {
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const jsonl = f.match(/^(\d{4}-\d{2}-\d{2})\.jsonl$/)
     if (jsonl) keys.add(jsonl[1])
     const watch = f.match(/^(\d{4}-\d{2}-\d{2})\.watch\.json$/)

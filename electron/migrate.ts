@@ -16,7 +16,6 @@ export function migrateLegacyUserData(): void {
   if (fs.existsSync(path.join(userData, 'config.json'))) return
 
   const appData = app.getPath('appData')
-<<<<<<< HEAD
   const userDataBase = path.basename(userData)
   const legacyDir = LEGACY_APP_DATA_DIRS.map((legacyName) => path.join(appData, legacyName)).find(
     (dir) => path.basename(dir) !== userDataBase && fs.existsSync(dir),
@@ -30,28 +29,5 @@ export function migrateLegacyUserData(): void {
     const to = path.join(userData, file)
     if (!fs.existsSync(from) || fs.existsSync(to)) continue
     fs.copyFileSync(from, to)
-=======
-  for (const legacyName of LEGACY_APP_DATA_DIRS) {
-    if (legacyName === path.basename(userData)) continue
-
-    const legacyDir = path.join(appData, legacyName)
-    if (!fs.existsSync(legacyDir)) continue
-
-    fs.mkdirSync(userData, { recursive: true })
-    let copied = false
-
-    for (const file of MIGRATED_FILES) {
-      const from = path.join(legacyDir, file)
-      const to = path.join(userData, file)
-      if (!fs.existsSync(from) || fs.existsSync(to)) continue
-      fs.copyFileSync(from, to)
-      copied = true
-    }
-
-    if (copied) {
-      console.info(`Migrated user data from ${legacyDir} to ${userData}`)
-    }
-    return
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
 }

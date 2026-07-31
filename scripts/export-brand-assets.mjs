@@ -2,11 +2,7 @@
  * One-shot brand asset export (sharp + to-ico).
  * Usage: node scripts/export-brand-assets.mjs
  */
-<<<<<<< HEAD
 import fs from 'node:fs/promises'
-=======
-import fs from 'node:fs'
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
@@ -34,22 +30,14 @@ async function main() {
   await raster('logo.svg', path.join(brand, 'logo.png'), 512, 512)
   await raster('logo-full.svg', path.join(brand, 'logo-full.png'), 840, 256)
 
-<<<<<<< HEAD
   const iconPng = await fs.readFile(path.join(assets, 'icon.png'))
-=======
-  const iconPng = fs.readFileSync(path.join(assets, 'icon.png'))
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const sizes = await Promise.all(
     [16, 32, 48, 64, 128, 256].map((s) =>
       sharp(iconPng).resize(s, s).png().toBuffer(),
     ),
   )
   const ico = await toIco(sizes)
-<<<<<<< HEAD
   await fs.writeFile(path.join(assets, 'icon.ico'), ico)
-=======
-  fs.writeFileSync(path.join(assets, 'icon.ico'), ico)
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   console.log('wrote assets/icon.ico')
 }
 

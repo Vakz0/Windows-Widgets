@@ -4,21 +4,11 @@ import {
   useRef,
   useState,
   type DragEvent,
-<<<<<<< HEAD
 } from 'react'
 import { addDays, startOfWeek, toIsoDate, useTasks } from '../hooks'
 import type { NotionTask } from '../vite-env'
 import { DayCell } from './calendar/DayCell'
 import { monthLong, monthShort, monthTitleOf } from './calendar/dateLabels'
-=======
-  type FormEvent,
-  type KeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-} from 'react'
-import { addDays, startOfWeek, toIsoDate, useTasks } from '../hooks'
-import type { NotionTask } from '../vite-env'
-import { TaskCard } from './TaskCard'
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import { useTaskContextMenu } from './TaskContextMenu'
 import { TaskDetailPanel } from './TaskDetailPanel'
 
@@ -38,171 +28,6 @@ const TITLE_VISIBILITY_PX = 40
 const PREFETCH_THRESHOLD_PX = 240
 const DND_MIME = 'application/x-lattice-task'
 
-<<<<<<< HEAD
-=======
-function monthShort(date: Date): string {
-  return date.toLocaleDateString('fr-FR', { month: 'short' })
-}
-
-function monthLong(date: Date): string {
-  return date.toLocaleDateString('fr-FR', { month: 'long' })
-}
-
-function monthTitleOf(date: Date): string {
-  return `${monthLong(date)} ${date.getFullYear()}`
-}
-
-/** Numéro du jour, avec le mois affiché pour le 1er (« 1 août »). */
-function dayLabel(date: Date): string {
-  if (date.getDate() === 1) return `1 ${monthShort(date)}`
-  return String(date.getDate())
-}
-
-function DayComposer({
-  busy,
-  onSubmit,
-  onCancel,
-}: {
-  busy: boolean
-  onSubmit: (title: string) => void
-  onCancel: () => void
-}) {
-  const [title, setTitle] = useState('')
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-
-  function submit() {
-    const value = title.trim()
-    if (!value || busy) return
-    onSubmit(value)
-  }
-
-  return (
-    <form
-      className="cal-composer no-drag"
-      onSubmit={(e: FormEvent) => {
-        e.preventDefault()
-        submit()
-      }}
-    >
-      <input
-        ref={inputRef}
-        className="cal-composer-input"
-        type="text"
-        value={title}
-        disabled={busy}
-        placeholder="Nouvelle tâche…"
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            onCancel()
-          }
-        }}
-        onBlur={() => {
-          if (!title.trim() && !busy) onCancel()
-        }}
-        aria-label="Titre de la nouvelle tâche"
-      />
-    </form>
-  )
-}
-
-/** Nombre de cartes fantômes par jour, pour une grille de chargement à l’allure naturelle. */
-const SKELETON_COUNTS = [1, 2, 0, 1, 2, 1, 0]
-
-function DayCell({
-  day,
-  tasks,
-  todayIso,
-  onOpen,
-  onTaskContextMenu,
-  loading,
-  dropTarget,
-  draggingId,
-  composing,
-  creating,
-  onOpenCompose,
-  onCancelCompose,
-  onCreate,
-  onDragOverDay,
-  onDragLeaveDay,
-  onDropDay,
-  onDragStart,
-  onDragEnd,
-}: {
-  day: Date
-  tasks: NotionTask[]
-  todayIso: string
-  onOpen: (task: NotionTask) => void
-  onTaskContextMenu: (task: NotionTask, e: ReactMouseEvent) => void
-  loading?: boolean
-  dropTarget: boolean
-  draggingId: string | null
-  composing: boolean
-  creating: boolean
-  onOpenCompose: () => void
-  onCancelCompose: () => void
-  onCreate: (title: string) => void
-  onDragOverDay: (e: DragEvent, dayIso: string) => void
-  onDragLeaveDay: (e: DragEvent, dayIso: string) => void
-  onDropDay: (e: DragEvent, dayIso: string) => void
-  onDragStart: (task: NotionTask, e: DragEvent) => void
-  onDragEnd: () => void
-}) {
-  const iso = toIsoDate(day)
-  const isToday = iso === todayIso
-  const skeletonCount = SKELETON_COUNTS[day.getDay()]
-
-  return (
-    <div
-      className={`cal-cell${iso < todayIso ? ' is-past' : ''}${dropTarget ? ' is-drop-target' : ''}`}
-      onDragOver={(e) => onDragOverDay(e, iso)}
-      onDragLeave={(e) => onDragLeaveDay(e, iso)}
-      onDrop={(e) => onDropDay(e, iso)}
-    >
-      <div className="cal-cell-head">
-        <button
-          className="cal-add-btn no-drag"
-          type="button"
-          onClick={onOpenCompose}
-          aria-label={`Ajouter une tâche le ${iso}`}
-          title="Ajouter une tâche"
-        >
-          +
-        </button>
-        <span className={`cal-day-num${isToday ? ' is-today' : ''}`}>
-          {isToday ? day.getDate() : dayLabel(day)}
-        </span>
-      </div>
-      <div className="cal-cell-cards">
-        {loading
-          ? Array.from({ length: skeletonCount }, (_, i) => (
-              <span className="skeleton cal-card-skeleton" key={`skeleton-${i}`} aria-hidden />
-            ))
-          : tasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onOpen={onOpen}
-                onContextMenu={onTaskContextMenu}
-                dragging={draggingId === task.id}
-                onDragStart={onDragStart}
-                onDragEnd={onDragEnd}
-              />
-            ))}
-        {composing ? (
-          <DayComposer busy={creating} onSubmit={onCreate} onCancel={onCancelCompose} />
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export function CalendarWidget() {
   const { tasks, error, loading, config, refresh } = useTasks()
   const [view, setView] = useState<CalendarView>('week')
@@ -338,11 +163,7 @@ export function CalendarWidget() {
   const scrollFrameRef = useRef<number | null>(null)
 
   const handleScroll = () => {
-<<<<<<< HEAD
     if (scrollFrameRef.current !== null && scrollFrameRef.current !== undefined) return
-=======
-    if (scrollFrameRef.current != null) return
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     scrollFrameRef.current = requestAnimationFrame(() => {
       scrollFrameRef.current = null
       const el = scrollRef.current
@@ -354,11 +175,7 @@ export function CalendarWidget() {
 
   useEffect(() => {
     return () => {
-<<<<<<< HEAD
       if (scrollFrameRef.current !== null && scrollFrameRef.current !== undefined) cancelAnimationFrame(scrollFrameRef.current)
-=======
-      if (scrollFrameRef.current != null) cancelAnimationFrame(scrollFrameRef.current)
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }, [])
 

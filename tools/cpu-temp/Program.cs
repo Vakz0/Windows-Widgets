@@ -51,7 +51,6 @@ static class Program
             float? coreMax = null;
             float? any = null;
 
-<<<<<<< HEAD
             var sensors = computer.Hardware
                 .Where(h => h.HardwareType == HardwareType.Cpu)
                 .SelectMany(h =>
@@ -77,32 +76,6 @@ static class Program
                     coreAvg = value;
                 else if (name.Contains("Core Max", StringComparison.OrdinalIgnoreCase))
                     coreMax = value;
-=======
-            foreach (var hardware in computer.Hardware)
-            {
-                if (hardware.HardwareType != HardwareType.Cpu)
-                    continue;
-
-                hardware.Update();
-                foreach (var sensor in hardware.Sensors)
-                {
-                    if (sensor.SensorType != SensorType.Temperature || sensor.Value is not float value)
-                        continue;
-                    if (value <= 0 || value > 125)
-                        continue;
-
-                    any ??= value;
-                    var name = sensor.Name;
-                    if (name.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Tctl", StringComparison.OrdinalIgnoreCase) ||
-                        name.Contains("Tdie", StringComparison.OrdinalIgnoreCase))
-                        package = value;
-                    else if (name.Contains("Core Average", StringComparison.OrdinalIgnoreCase))
-                        coreAvg = value;
-                    else if (name.Contains("Core Max", StringComparison.OrdinalIgnoreCase))
-                        coreMax = value;
-                }
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
             }
 
             var best = package ?? coreAvg ?? coreMax ?? any;

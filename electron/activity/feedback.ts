@@ -19,13 +19,8 @@ import {
 } from './storage'
 
 type FeedbackHooks = {
-<<<<<<< HEAD
   emitSummary: () => void | Promise<void>
   getActivitySummary: () => ActivityDaySummary | Promise<ActivityDaySummary>
-=======
-  emitSummary: () => void
-  getActivitySummary: () => ActivityDaySummary
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   getLastSummary: () => ActivityDaySummary | null
 }
 
@@ -42,7 +37,6 @@ function requireHooks(): FeedbackHooks {
   return hooks
 }
 
-<<<<<<< HEAD
 async function resultSummary(h: FeedbackHooks): Promise<ActivityDaySummary> {
   return h.getLastSummary() ?? (await h.getActivitySummary())
 }
@@ -51,16 +45,6 @@ export async function correctActivityCategory(
   payload: ActivityCorrectionPayload,
 ): Promise<ActivityCorrectionResult> {
   await loadActivityState()
-=======
-function resultSummary(h: FeedbackHooks): ActivityDaySummary {
-  return h.getLastSummary() ?? h.getActivitySummary()
-}
-
-export function correctActivityCategory(
-  payload: ActivityCorrectionPayload,
-): ActivityCorrectionResult {
-  loadActivityState()
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const h = requireHooks()
   const scope: ActivityCorrectionScope =
     payload.scope === 'title' || payload.scope === 'domain' ? payload.scope : 'app'
@@ -89,11 +73,7 @@ export function correctActivityCategory(
         categoryFromDomain(domainKey)?.category ??
         'other'
 
-<<<<<<< HEAD
     await appendFeedback({
-=======
-    appendFeedback({
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       at: new Date().toISOString(),
       app: normalizeAppKey(payload.app || openSegment?.app || 'browser'),
       titleSample: domainKey,
@@ -114,11 +94,7 @@ export function correctActivityCategory(
       },
     }
     setRules(rules)
-<<<<<<< HEAD
     await saveRules()
-=======
-    saveRules()
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
     if (openMatchesDomain && openSegment) {
       openSegment.category = payload.category
@@ -127,19 +103,11 @@ export function correctActivityCategory(
       openSegment.matchedPattern = domainKey
     }
 
-<<<<<<< HEAD
     await h.emitSummary()
     return {
       ok: true,
       message: `« ${domainKey} » → ${payload.category}`,
       summary: await resultSummary(h),
-=======
-    h.emitSummary()
-    return {
-      ok: true,
-      message: `« ${domainKey} » → ${payload.category}`,
-      summary: resultSummary(h),
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       rules: structuredClone(getRules()),
     }
   }
@@ -156,18 +124,9 @@ export function correctActivityCategory(
         rules.appDefaults[appKey] ??
         'other'
 
-<<<<<<< HEAD
   let titleSample: string | null = null
   if (typeof payload.titleSample === 'string') titleSample = payload.titleSample
   else if (openSegment?.app === appKey) titleSample = openSegment.title
-=======
-  const titleSample =
-    typeof payload.titleSample === 'string'
-      ? payload.titleSample
-      : openSegment?.app === appKey
-        ? openSegment.title
-        : null
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
   let durationMsHint = 0
   if (openSegment && openSegment.app === appKey) {
@@ -189,11 +148,7 @@ export function correctActivityCategory(
     }
   }
 
-<<<<<<< HEAD
   await appendFeedback({
-=======
-  appendFeedback({
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     at: new Date().toISOString(),
     app: appKey,
     titleSample,
@@ -229,11 +184,7 @@ export function correctActivityCategory(
   }
 
   setRules(rules)
-<<<<<<< HEAD
   await saveRules()
-=======
-  saveRules()
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
   if (openSegment && openSegment.app === appKey) {
     openSegment.category = payload.category
@@ -242,22 +193,14 @@ export function correctActivityCategory(
     openSegment.matchedPattern = scope === 'title' ? titlePattern : null
   }
 
-<<<<<<< HEAD
   await h.emitSummary()
-=======
-  h.emitSummary()
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return {
     ok: true,
     message:
       scope === 'app'
         ? `« ${appKey} » → ${payload.category}`
         : `Motif titre ajouté → ${payload.category}`,
-<<<<<<< HEAD
     summary: await resultSummary(h),
-=======
-    summary: resultSummary(h),
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     rules: structuredClone(getRules()),
   }
 }

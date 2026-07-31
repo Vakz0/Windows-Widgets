@@ -7,26 +7,20 @@
 import http from 'node:http'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
-<<<<<<< HEAD
 import fsp from 'node:fs/promises'
-=======
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import type { ActivityCategory, ActivitySiteBreakdown } from '../shared/types'
 import { categoryFromDomain, normalizeDomain } from './activityContext'
 import {
   bridgeMetaPath,
+  daysDir,
   ensureDirs,
   todayKey,
   watchPath,
+  assertWithin,
 } from './activity/paths'
 
-<<<<<<< HEAD
 const MEDIA_BRIDGE_PORT = 17_384
 const MEDIA_BRIDGE_HOST = '127.0.0.1'
-=======
-export const MEDIA_BRIDGE_PORT = 17_384
-export const MEDIA_BRIDGE_HOST = '127.0.0.1'
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
 /** Heartbeat must refresh within this window or playing is considered stale. */
 const MEDIA_TTL_MS = 45_000
@@ -60,7 +54,6 @@ export function setMediaWatchListener(cb: (() => void) | null): void {
   onWatchChange = cb
 }
 
-<<<<<<< HEAD
 async function ensureToken(): Promise<string> {
   if (bridgeToken) return bridgeToken
   const file = bridgeMetaPath()
@@ -76,33 +69,11 @@ async function ensureToken(): Promise<string> {
     }
   } catch (err) {
     console.debug('ensureToken: regenerate below', err)
-=======
-function ensureToken(): string {
-  if (bridgeToken) return bridgeToken
-  const file = bridgeMetaPath()
-  try {
-    if (fs.existsSync(file)) {
-      const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as {
-        token?: string
-        port?: number
-      }
-      if (typeof raw.token === 'string' && raw.token.length >= 16) {
-        bridgeToken = raw.token
-        return bridgeToken
-      }
-    }
-  } catch {
-    // regenerate below
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   bridgeToken = randomBytes(24).toString('hex')
   try {
     ensureDirs()
-<<<<<<< HEAD
     await fsp.writeFile(
-=======
-    fs.writeFileSync(
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       file,
       `${JSON.stringify(
         {
@@ -122,7 +93,6 @@ function ensureToken(): string {
   return bridgeToken
 }
 
-<<<<<<< HEAD
 function setCors(res: http.ServerResponse, req: http.IncomingMessage): void {
   const origin = req.headers.origin
   if (
@@ -133,10 +103,6 @@ function setCors(res: http.ServerResponse, req: http.IncomingMessage): void {
   ) {
     res.setHeader('Access-Control-Allow-Origin', origin)
   }
-=======
-function cors(res: http.ServerResponse): void {
-  res.setHeader('Access-Control-Allow-Origin', '*')
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -163,13 +129,9 @@ function readBody(req: http.IncomingMessage): Promise<string> {
 }
 
 function tokenOk(req: http.IncomingMessage): boolean {
-<<<<<<< HEAD
   // Token is loaded at startMediaBridge; sync check uses in-memory value only.
   const expected = bridgeToken
   if (!expected) return false
-=======
-  const expected = ensureToken()
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const header = req.headers['x-lattice-token']
   const got = Array.isArray(header) ? header[0] : header
   return typeof got === 'string' && got === expected
@@ -209,12 +171,8 @@ function loadWatchMapFromDisk(date: string): Record<string, number> {
       }
     }
     return out
-<<<<<<< HEAD
   } catch (err) {
     console.debug('loadWatchMapFromDisk: ignored', err)
-=======
-  } catch {
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return {}
   }
 }
@@ -247,29 +205,17 @@ function scheduleWatchPersist(date: string): void {
   persistTimer = setTimeout(() => {
     persistTimer = null
     if (!watchCache || watchCache.date !== date) return
-<<<<<<< HEAD
     void (async () => {
       try {
         ensureDirs()
         const file = watchPath(date)
-        const tmp = `${file}.${process.pid}.tmp`
+        const tmp = assertWithin(daysDir(), `${file}.${process.pid}.tmp`)
         await fsp.writeFile(tmp, `${JSON.stringify(watchCache!.map)}\n`, 'utf8')
         await fsp.rename(tmp, file)
       } catch (err) {
         console.error('Activity media bridge: watch persist failed', err)
       }
     })()
-=======
-    try {
-      ensureDirs()
-      const file = watchPath(date)
-      const tmp = `${file}.${process.pid}.tmp`
-      fs.writeFileSync(tmp, `${JSON.stringify(watchCache.map)}\n`, 'utf8')
-      fs.renameSync(tmp, file)
-    } catch (err) {
-      console.error('Activity media bridge: watch persist failed', err)
-    }
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }, 1_500)
 }
 
@@ -281,11 +227,7 @@ function scheduleWatchNotify(): void {
   }, 750)
 }
 
-<<<<<<< HEAD
 function applyWatchDeltas(deltas: WatchDelta[], date = todayKey()): void {
-=======
-export function applyWatchDeltas(deltas: WatchDelta[], date = todayKey()): void {
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!deltas.length) return
   const map =
     watchCache?.date === date ? watchCache.map : { ...loadWatchMapFromDisk(date) }
@@ -322,7 +264,6 @@ function parseWatchArray(raw: unknown): WatchDelta[] {
   return out
 }
 
-<<<<<<< HEAD
 function json(
   res: http.ServerResponse,
   req: http.IncomingMessage,
@@ -330,10 +271,6 @@ function json(
   body: unknown,
 ): void {
   setCors(res, req)
-=======
-function json(res: http.ServerResponse, status: number, body: unknown): void {
-  cors(res)
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const payload = JSON.stringify(body)
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -342,7 +279,6 @@ function json(res: http.ServerResponse, status: number, body: unknown): void {
   res.end(payload)
 }
 
-<<<<<<< HEAD
 async function handleMediaPost(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -395,8 +331,6 @@ async function handleMediaPost(
   json(res, req, 200, { ok: true, ...snapshot() })
 }
 
-=======
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 async function handleRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
@@ -405,22 +339,14 @@ async function handleRequest(
   const method = req.method || 'GET'
 
   if (method === 'OPTIONS') {
-<<<<<<< HEAD
     setCors(res, req)
-=======
-    cors(res)
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     res.writeHead(204)
     res.end()
     return
   }
 
   if (url.pathname === '/v1/health' && method === 'GET') {
-<<<<<<< HEAD
     json(res, req, 200, {
-=======
-    json(res, 200, {
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       ok: true,
       service: 'lattice-media-bridge',
       port: MEDIA_BRIDGE_PORT,
@@ -430,83 +356,23 @@ async function handleRequest(
 
   if (url.pathname === '/v1/media' && method === 'GET') {
     if (!tokenOk(req)) {
-<<<<<<< HEAD
       json(res, req, 401, { ok: false, message: 'token invalide' })
       return
     }
     json(res, req, 200, { ok: true, ...snapshot() })
-=======
-      json(res, 401, { ok: false, message: 'token invalide' })
-      return
-    }
-    json(res, 200, { ok: true, ...snapshot() })
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return
   }
 
   if (url.pathname === '/v1/media' && method === 'POST') {
-<<<<<<< HEAD
     await handleMediaPost(req, res)
     return
   }
 
   json(res, req, 404, { ok: false, message: 'not found' })
-=======
-    if (!tokenOk(req)) {
-      json(res, 401, { ok: false, message: 'token invalide' })
-      return
-    }
-    let body: {
-      playing?: unknown
-      title?: unknown
-      origin?: unknown
-      watch?: unknown
-    }
-    try {
-      const raw = await readBody(req)
-      body = raw ? (JSON.parse(raw) as typeof body) : {}
-    } catch {
-      json(res, 400, { ok: false, message: 'JSON invalide' })
-      return
-    }
-
-    const playing = Boolean(body.playing)
-    const now = Date.now()
-    const title =
-      typeof body.title === 'string' && body.title.trim()
-        ? body.title.trim().slice(0, 200)
-        : null
-    const origin =
-      typeof body.origin === 'string' && body.origin.trim()
-        ? body.origin.trim().slice(0, 200)
-        : null
-
-    state = playing
-      ? {
-          playing: true,
-          expiresAt: now + MEDIA_TTL_MS,
-          title,
-          origin,
-        }
-      : {
-          playing: false,
-          expiresAt: 0,
-          title: null,
-          origin: null,
-        }
-
-    applyWatchDeltas(parseWatchArray(body.watch))
-    json(res, 200, { ok: true, ...snapshot() })
-    return
-  }
-
-  json(res, 404, { ok: false, message: 'not found' })
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
 
 export function startMediaBridge(): void {
   if (server) return
-<<<<<<< HEAD
   void ensureToken().then(() => {
     if (server) return
     server = http.createServer((req, res) => {
@@ -530,28 +396,6 @@ export function startMediaBridge(): void {
       )
     })
   })
-=======
-  ensureToken()
-  server = http.createServer((req, res) => {
-    void handleRequest(req, res).catch((err) => {
-      console.error('Activity media bridge request failed', err)
-      try {
-        json(res, 500, { ok: false, message: 'internal error' })
-      } catch {
-        res.end()
-      }
-    })
-  })
-  server.on('error', (err) => {
-    console.error('Activity media bridge listen error', err)
-    server = null
-  })
-  server.listen(MEDIA_BRIDGE_PORT, MEDIA_BRIDGE_HOST, () => {
-    console.info(
-      `Activity media bridge on http://${MEDIA_BRIDGE_HOST}:${MEDIA_BRIDGE_PORT}`,
-    )
-  })
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
 
 export function stopMediaBridge(): void {
@@ -565,30 +409,18 @@ export function stopMediaBridge(): void {
   }
   // Flush pending watch map before closing.
   if (watchCache) {
-<<<<<<< HEAD
     const snapshot = watchCache
     void (async () => {
       try {
         ensureDirs()
         const file = watchPath(snapshot.date)
-        const tmp = `${file}.${process.pid}.tmp`
+        const tmp = assertWithin(daysDir(), `${file}.${process.pid}.tmp`)
         await fsp.writeFile(tmp, `${JSON.stringify(snapshot.map)}\n`, 'utf8')
         await fsp.rename(tmp, file)
       } catch (err) {
         console.error('Activity media bridge: final watch flush failed', err)
       }
     })()
-=======
-    try {
-      ensureDirs()
-      const file = watchPath(watchCache.date)
-      const tmp = `${file}.${process.pid}.tmp`
-      fs.writeFileSync(tmp, `${JSON.stringify(watchCache.map)}\n`, 'utf8')
-      fs.renameSync(tmp, file)
-    } catch (err) {
-      console.error('Activity media bridge: final watch flush failed', err)
-    }
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   if (!server) return
   const s = server

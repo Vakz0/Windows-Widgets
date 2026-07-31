@@ -2,7 +2,6 @@
 
 import type { WidgetState } from './widget'
 
-<<<<<<< HEAD
 export type {
   WidgetState,
   CatalogWidgetInfo,
@@ -11,9 +10,6 @@ export type {
   WidgetPlacement,
   WidgetServiceId,
 } from './widget'
-=======
-export type { WidgetState, CatalogWidgetInfo, WidgetDefinition, WidgetSource, WidgetPlacement, WidgetServiceId } from './widget'
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export interface TaskPropertyMapping {
   title: string
   date: string
@@ -299,11 +295,7 @@ export interface ActivitySegment {
   contextKind?: ActivityContextKind | null
   fileName?: string | null
   projectName?: string | null
-<<<<<<< HEAD
   /** Apps Lattice / ignorées — hors totaux et tops. */
-=======
-  /** True = Lattice / apps ignorées — hors totaux et tops. */
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   ignored?: boolean
   /** Session focus Notion active au moment du segment. */
   focusSessionId?: string | null
@@ -456,11 +448,7 @@ export interface ActivityTitlePattern {
 }
 
 export interface ActivityRules {
-<<<<<<< HEAD
   /** Nom d'exe sans extension, en minuscules → catégorie. */
-=======
-  /** Clé = nom d’exe sans extension, en minuscules. */
->>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   appDefaults: Record<string, ActivityCategory>
   titlePatterns: ActivityTitlePattern[]
   /** Corrections manuelles (prioritaires, source `user`). */
