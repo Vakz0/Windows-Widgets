@@ -3,9 +3,7 @@
  * State under userData/activity/ (focus-session.json, focus-journal.jsonl).
  */
 import fs from 'node:fs'
-import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { app } from 'electron'
 import type {
   FocusAllowlist,
   FocusInterruptAction,
@@ -15,6 +13,15 @@ import type {
   ResolveFocusInterruptPayload,
   StartFocusSessionPayload,
 } from '../shared/types'
+import { normalizeDomain } from './activityContext'
+import {
+  activityDir,
+  focusJournalPath,
+  focusSessionPath,
+  isDayKey,
+  todayKey,
+} from './activity/paths'
+import { normalizeAppKey } from './activity/normalize'
 
 const DEFAULT_APPS = ['cursor', 'code', 'code - insiders', 'notion', 'windowsterminal', 'powershell', 'pwsh']
 
@@ -28,29 +35,8 @@ let stateLoaded = false
 let onChanged: FocusChangedListener | null = null
 let onInterrupt: FocusInterruptListener | null = null
 
-function activityRoot(): string {
-  return path.join(app.getPath('userData'), 'activity')
-}
-
-function sessionPath(): string {
-  return path.join(activityRoot(), 'focus-session.json')
-}
-
-function journalPath(): string {
-  return path.join(activityRoot(), 'focus-journal.jsonl')
-}
-
 function ensureDirs(): void {
-  const root = activityRoot()
-  if (!fs.existsSync(root)) fs.mkdirSync(root, { recursive: true })
-}
-
-function normalizeApp(appName: string): string {
-  return appName.trim().toLowerCase().replace(/\.exe$/i, '')
-}
-
-function normalizeDomain(domain: string): string {
-  return domain.trim().toLowerCase().replace(/^www\./, '')
+  fs.mkdirSync(activityDir(), { recursive: true })
 }
 
 function normalizeProject(name: string): string {
@@ -72,7 +58,7 @@ function uniqNormalized(values: string[], normalize: (v: string) => string): str
 
 function sanitizeAllowlist(raw?: Partial<FocusAllowlist> | null): FocusAllowlist {
   return {
-    apps: uniqNormalized([...(raw?.apps ?? [])], normalizeApp),
+    apps: uniqNormalized([...(raw?.apps ?? [])], normalizeAppKey),
     domains: uniqNormalized([...(raw?.domains ?? [])], normalizeDomain),
     ideProjects: uniqNormalized([...(raw?.ideProjects ?? [])], normalizeProject),
   }
@@ -96,7 +82,7 @@ export function isOnFocusAllowlist(
   allowlist: FocusAllowlist,
   sample: { app: string; domain: string | null; projectName: string | null },
 ): boolean {
-  const appKey = normalizeApp(sample.app)
+  const appKey = normalizeAppKey(sample.app)
   if (allowlist.apps.includes(appKey)) return true
   if (sample.projectName && allowlist.ideProjects.includes(normalizeProject(sample.projectName))) {
     return true
@@ -112,24 +98,24 @@ function emitChanged(): void {
 function persistSession(): void {
   ensureDirs()
   if (!session) {
-    if (fs.existsSync(sessionPath())) {
+    if (fs.existsSync(focusSessionPath())) {
       try {
-        fs.unlinkSync(sessionPath())
+        fs.unlinkSync(focusSessionPath())
       } catch {
         /* ignore */
       }
     }
     return
   }
-  fs.writeFileSync(sessionPath(), `${JSON.stringify(session, null, 2)}\n`, 'utf8')
+  fs.writeFileSync(focusSessionPath(), `${JSON.stringify(session, null, 2)}\n`, 'utf8')
 }
 
 function loadPersistedSession(): void {
   if (stateLoaded) return
   stateLoaded = true
   try {
-    if (!fs.existsSync(sessionPath())) return
-    const raw = JSON.parse(fs.readFileSync(sessionPath(), 'utf8')) as Partial<FocusSession>
+    if (!fs.existsSync(focusSessionPath())) return
+    const raw = JSON.parse(fs.readFileSync(focusSessionPath(), 'utf8')) as Partial<FocusSession>
     if (!raw?.id || !raw.notionTaskId || !raw.startedAt) return
     session = {
       id: String(raw.id),
@@ -257,24 +243,15 @@ export function updateFocusAllowlist(patch: Partial<FocusAllowlist>): FocusSessi
 
 function appendJournal(entry: FocusJournalEntry): void {
   ensureDirs()
-  fs.appendFileSync(journalPath(), `${JSON.stringify(entry)}\n`, 'utf8')
+  fs.appendFileSync(focusJournalPath(), `${JSON.stringify(entry)}\n`, 'utf8')
 }
 
 export function getFocusJournal(date?: string): FocusJournalEntry[] {
-  const key =
-    date && /^\d{4}-\d{2}-\d{2}$/.test(date)
-      ? date
-      : (() => {
-          const d = new Date()
-          const y = d.getFullYear()
-          const m = String(d.getMonth() + 1).padStart(2, '0')
-          const day = String(d.getDate()).padStart(2, '0')
-          return `${y}-${m}-${day}`
-        })()
+  const key = date && isDayKey(date) ? date : todayKey()
 
-  if (!fs.existsSync(journalPath())) return []
+  if (!fs.existsSync(focusJournalPath())) return []
   const out: FocusJournalEntry[] = []
-  for (const line of fs.readFileSync(journalPath(), 'utf8').split(/\r?\n/)) {
+  for (const line of fs.readFileSync(focusJournalPath(), 'utf8').split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
@@ -288,9 +265,9 @@ export function getFocusJournal(date?: string): FocusJournalEntry[] {
 }
 
 export function readFocusJournalInRange(from: string, to: string): FocusJournalEntry[] {
-  if (!fs.existsSync(journalPath())) return []
+  if (!fs.existsSync(focusJournalPath())) return []
   const out: FocusJournalEntry[] = []
-  for (const line of fs.readFileSync(journalPath(), 'utf8').split(/\r?\n/)) {
+  for (const line of fs.readFileSync(focusJournalPath(), 'utf8').split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
@@ -305,9 +282,9 @@ export function readFocusJournalInRange(from: string, to: string): FocusJournalE
 }
 
 export function clearFocusJournalFile(): void {
-  if (fs.existsSync(journalPath())) {
+  if (fs.existsSync(focusJournalPath())) {
     try {
-      fs.unlinkSync(journalPath())
+      fs.unlinkSync(focusJournalPath())
     } catch {
       /* ignore */
     }
@@ -448,7 +425,7 @@ export function resolveFocusInterrupt(payload: ResolveFocusInterruptPayload): {
     const apps = [...session.allowlist.apps]
     const domains = [...session.allowlist.domains]
     const ideProjects = [...session.allowlist.ideProjects]
-    const appKey = normalizeApp(ctx.app)
+    const appKey = normalizeAppKey(ctx.app)
     if (appKey && appKey !== 'unknown' && !apps.includes(appKey)) apps.push(appKey)
     if (ctx.domain) {
       const d = normalizeDomain(ctx.domain)

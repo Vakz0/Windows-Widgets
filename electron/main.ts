@@ -64,6 +64,7 @@ import {
   updateFocusAllowlist,
 } from './focusSession'
 import { createTrayMenuController } from './trayMenu'
+import { broadcastToAllWindows } from './notify'
 import {
   getAllWidgetDefinitions,
   getDesktopWidgetDefinitions,
@@ -179,6 +180,40 @@ function appIconImage(): Electron.NativeImage {
   return img.isEmpty() ? nativeImage.createEmpty() : img
 }
 
+function applyWindowIcon(win: BrowserWindow): void {
+  const icon = appIconImage()
+  if (!icon.isEmpty()) win.setIcon(icon)
+}
+
+function defaultWebPreferences(
+  overrides: Partial<Electron.WebPreferences> = {},
+): Electron.WebPreferences {
+  return {
+    preload: preloadPath(),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: false,
+    backgroundThrottling: true,
+    spellcheck: false,
+    v8CacheOptions: 'code',
+    ...overrides,
+  }
+}
+
+function loadRendererWidget(
+  win: BrowserWindow,
+  widgetId: string,
+  query: Record<string, string> = {},
+): void {
+  const params = { widget: widgetId, ...query }
+  if (isDev && DEV_URL) {
+    const search = new URLSearchParams(params).toString()
+    void win.loadURL(`${DEV_URL}?${search}`)
+    return
+  }
+  void win.loadFile(path.join(__dirname, '../dist/index.html'), { query: params })
+}
+
 function isEnabled(id: string): boolean {
   return isWidgetEnabledInConfig(config, id)
 }
@@ -243,13 +278,7 @@ function loadWidgetUrl(win: BrowserWindow, widgetId: string): void {
     void win.loadFile(external.entryFile)
     return
   }
-  if (isDev && DEV_URL) {
-    void win.loadURL(`${DEV_URL}?widget=${widgetId}`)
-  } else {
-    void win.loadFile(path.join(__dirname, '../dist/index.html'), {
-      query: { widget: widgetId },
-    })
-  }
+  loadRendererWidget(win, widgetId)
 }
 
 function createWidgetWindow(
@@ -307,19 +336,10 @@ function createWidgetWindow(
     backgroundColor: '#191919',
     icon: appIconPath(),
     paintWhenInitiallyHidden: false,
-    webPreferences: {
-      preload: preloadPath(),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: true,
-      spellcheck: false,
-      v8CacheOptions: 'code',
-    },
+    webPreferences: defaultWebPreferences(),
   })
 
-  const winIcon = appIconImage()
-  if (!winIcon.isEmpty()) win.setIcon(winIcon)
+  applyWindowIcon(win)
 
   if (alwaysOnTop) {
     win.setAlwaysOnTop(true, 'pop-up-menu')
@@ -482,12 +502,7 @@ function listCatalogWidgets(): CatalogWidgetInfo[] {
 }
 
 function broadcastWidgetsChanged(): void {
-  const payload = listCatalogWidgets()
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('widgets-changed', payload)
-    }
-  }
+  broadcastToAllWindows('widgets-changed', listCatalogWidgets())
 }
 
 function enableWidget(id: string): boolean {
@@ -562,27 +577,11 @@ function openCatalog(opts?: { view?: 'catalog' | 'settings' }): void {
     hasShadow: true,
     backgroundColor: '#191919',
     icon: appIconPath(),
-    webPreferences: {
-      preload: preloadPath(),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-      backgroundThrottling: true,
-      spellcheck: false,
-      v8CacheOptions: 'code',
-    },
+    webPreferences: defaultWebPreferences(),
   })
 
-  const catalogIcon = appIconImage()
-  if (!catalogIcon.isEmpty()) catalogWindow.setIcon(catalogIcon)
-
-  if (isDev && DEV_URL) {
-    void catalogWindow.loadURL(`${DEV_URL}?widget=catalog&view=${view}`)
-  } else {
-    void catalogWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
-      query: { widget: 'catalog', view },
-    })
-  }
+  applyWindowIcon(catalogWindow)
+  loadRendererWidget(catalogWindow, 'catalog', { view })
 
   const emitCatalogMaximized = () => {
     if (!catalogWindow || catalogWindow.isDestroyed()) return
@@ -613,12 +612,7 @@ function pushActivitySummary(summary: ActivityDaySummary): void {
 }
 
 function broadcastFocusSession(): void {
-  const payload = getFocusSession()
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send('focus-session-updated', payload)
-    }
-  }
+  broadcastToAllWindows('focus-session-updated', getFocusSession())
   refreshActivitySummary()
 }
 
@@ -650,28 +644,12 @@ function showFocusInterruptWindow(ctx: FocusInterruptContext): void {
       hasShadow: true,
       backgroundColor: '#191919',
       icon: appIconPath(),
-      webPreferences: {
-        preload: preloadPath(),
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: false,
-        backgroundThrottling: false,
-        spellcheck: false,
-        v8CacheOptions: 'code',
-      },
+      webPreferences: defaultWebPreferences({ backgroundThrottling: false }),
     })
-    const icon = appIconImage()
-    if (!icon.isEmpty()) focusInterruptWindow.setIcon(icon)
+    applyWindowIcon(focusInterruptWindow)
     focusInterruptWindow.setAlwaysOnTop(true, 'pop-up-menu')
     focusInterruptWindow.setVisibleOnAllWorkspaces(true)
-
-    if (isDev && DEV_URL) {
-      void focusInterruptWindow.loadURL(`${DEV_URL}?widget=focus-interrupt`)
-    } else {
-      void focusInterruptWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
-        query: { widget: 'focus-interrupt' },
-      })
-    }
+    loadRendererWidget(focusInterruptWindow, 'focus-interrupt')
 
     focusInterruptWindow.on('closed', () => {
       focusInterruptWindow = null
@@ -1011,6 +989,7 @@ function registerIpc(): void {
     return statsCache
   })
   ipcMain.handle('get-config', () => toPublicConfig())
+  ipcMain.handle('get-notion-settings', () => toPublicConfig())
   ipcMain.handle(
     'update-public-settings',
     (
@@ -1067,7 +1046,6 @@ function registerIpc(): void {
       }
     },
   )
-  ipcMain.handle('get-notion-settings', () => toPublicConfig())
   ipcMain.handle(
     'save-notion-settings',
     (_e, patch: NotionSettingsPatch) => {

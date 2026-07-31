@@ -11,16 +11,10 @@ import {
 import { addDays, startOfWeek, toIsoDate, useTasks } from '../hooks'
 import type { NotionTask } from '../vite-env'
 import { TaskCard } from './TaskCard'
+import { useTaskContextMenu } from './TaskContextMenu'
 import { TaskDetailPanel } from './TaskDetailPanel'
 
 type CalendarView = 'week' | 'month'
-
-type TaskContextMenu = {
-  task: NotionTask
-  x: number
-  y: number
-  confirm: boolean
-}
 
 const DAY_NAMES = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
 /** Semaines de contexte passé affichées avant la semaine courante. */
@@ -210,11 +204,20 @@ export function CalendarWidget() {
   const [dropDay, setDropDay] = useState<string | null>(null)
   const [composeDay, setComposeDay] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [contextMenu, setContextMenu] = useState<TaskContextMenu | null>(null)
-  const [hiddenIds, setHiddenIds] = useState<Record<string, true>>({})
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
+  const {
+    hiddenIds,
+    actionError,
+    setActionError,
+    openTaskContextMenu,
+    menu,
+  } = useTaskContextMenu({
+    shellRef,
+    tasks,
+    menuSize: { width: 168, height: 84 },
+    onOpen: setSelected,
+  })
 
   const todayIso = toIsoDate(new Date())
   const currentWeekStart = useMemo(() => startOfWeek(new Date()), [])
@@ -260,7 +263,7 @@ export function CalendarWidget() {
     })
   }, [currentWeekStart, weeksAhead, maxWeeksAhead])
 
-  // Nettoyer overrides / masques une fois que le cache a rattrapé l’état optimiste.
+  // Nettoyer overrides une fois que le cache a rattrapé l’état optimiste.
   useEffect(() => {
     setDateOverrides((prev) => {
       const keys = Object.keys(prev)
@@ -270,19 +273,6 @@ export function CalendarWidget() {
       for (const id of keys) {
         const task = tasks.find((t) => t.id === id)
         if (!task || task.date === prev[id]) {
-          delete next[id]
-          changed = true
-        }
-      }
-      return changed ? next : prev
-    })
-    setHiddenIds((prev) => {
-      const keys = Object.keys(prev)
-      if (!keys.length) return prev
-      let changed = false
-      const next = { ...prev }
-      for (const id of keys) {
-        if (!tasks.some((t) => t.id === id)) {
           delete next[id]
           changed = true
         }
@@ -304,22 +294,6 @@ export function CalendarWidget() {
     }
     return map
   }, [tasks, dateOverrides, hiddenIds])
-
-  useEffect(() => {
-    if (!contextMenu) return
-    const close = () => setContextMenu(null)
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('mousedown', close)
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', close, true)
-    return () => {
-      window.removeEventListener('mousedown', close)
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', close, true)
-    }
-  }, [contextMenu])
 
   const scrollToToday = (smooth: boolean) => {
     const el = scrollRef.current
@@ -459,60 +433,6 @@ export function CalendarWidget() {
     }
   }
 
-  function openTaskContextMenu(task: NotionTask, e: ReactMouseEvent) {
-    const shell = shellRef.current
-    if (!shell) return
-    const rect = shell.getBoundingClientRect()
-    const menuW = 168
-    const menuH = 84
-    const x = Math.min(Math.max(8, e.clientX - rect.left), rect.width - menuW - 8)
-    const y = Math.min(Math.max(8, e.clientY - rect.top), rect.height - menuH - 8)
-    setContextMenu({ task, x, y, confirm: false })
-    setActionError(null)
-  }
-
-  function unhideTask(id: string) {
-    setHiddenIds((prev) => {
-      if (!prev[id]) return prev
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-  }
-
-  async function handleDeleteTask(task: NotionTask) {
-    setContextMenu(null)
-    setHiddenIds((prev) => ({ ...prev, [task.id]: true }))
-    setActionError(null)
-    try {
-      const result = await window.lattice.deleteTask({ pageId: task.id })
-      if (!result.ok) {
-        unhideTask(task.id)
-        setActionError(result.message ?? 'Impossible de supprimer la tâche.')
-      }
-    } catch (err) {
-      unhideTask(task.id)
-      setActionError(String(err))
-    }
-  }
-
-  async function handleStartFocus(task: NotionTask) {
-    setContextMenu(null)
-    setActionError(null)
-    try {
-      const result = await window.lattice.startFocusSession({
-        notionTaskId: task.id,
-        notionTaskTitle: task.title,
-        databaseId: task.databaseId,
-      })
-      if (!result.ok) {
-        setActionError(result.message ?? 'Impossible de démarrer la session focus.')
-      }
-    } catch (err) {
-      setActionError(String(err))
-    }
-  }
-
   if (selected) {
     return (
       <div className="widget-shell">
@@ -649,53 +569,7 @@ export function CalendarWidget() {
         </div>
       )}
 
-      {contextMenu ? (
-        <div
-          className="cal-context-menu no-drag"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          role="menu"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="cal-context-item"
-            role="menuitem"
-            onClick={() => {
-              setSelected(contextMenu.task)
-              setContextMenu(null)
-            }}
-          >
-            Ouvrir
-          </button>
-          <button
-            type="button"
-            className="cal-context-item"
-            role="menuitem"
-            onClick={() => void handleStartFocus(contextMenu.task)}
-          >
-            Travailler dessus
-          </button>
-          {contextMenu.confirm ? (
-            <button
-              type="button"
-              className="cal-context-item is-danger"
-              role="menuitem"
-              onClick={() => void handleDeleteTask(contextMenu.task)}
-            >
-              Confirmer la suppression
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="cal-context-item is-danger"
-              role="menuitem"
-              onClick={() => setContextMenu((m) => (m ? { ...m, confirm: true } : m))}
-            >
-              Supprimer
-            </button>
-          )}
-        </div>
-      ) : null}
+      {menu}
     </div>
   )
 }

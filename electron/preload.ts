@@ -48,6 +48,7 @@ const api = {
     ipcRenderer.invoke('delete-task', payload),
   getStats: (): Promise<SystemStats> => ipcRenderer.invoke('get-stats'),
   getConfig: (): Promise<PublicConfig> => ipcRenderer.invoke('get-config'),
+  getNotionSettings: (): Promise<PublicConfig> => ipcRenderer.invoke('get-config'),
   updatePublicSettings: (patch: {
     refreshIntervalSeconds?: number
     demoMode?: boolean
@@ -55,7 +56,6 @@ const api = {
     updates?: { autoDownload?: boolean }
   }): Promise<{ ok: boolean; config: PublicConfig }> =>
     ipcRenderer.invoke('update-public-settings', patch),
-  getNotionSettings: (): Promise<PublicConfig> => ipcRenderer.invoke('get-notion-settings'),
   saveNotionSettings: (
     patch: NotionSettingsPatch,
   ): Promise<{ ok: boolean; config: PublicConfig; message: string }> =>

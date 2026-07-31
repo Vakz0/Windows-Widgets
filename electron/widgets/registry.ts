@@ -1,4 +1,4 @@
-import type { WidgetDefinition, WidgetServiceId } from '../../shared/widget'
+import type { WidgetDefinition } from '../../shared/widget'
 import { discoverExternalWidgets } from './discoverExternal'
 
 const BUILTIN_WIDGETS: WidgetDefinition[] = [
@@ -59,11 +59,4 @@ export function getWidgetDefinition(id: string): WidgetDefinition | undefined {
 
 export function getDesktopWidgetDefinitions(): WidgetDefinition[] {
   return getAllWidgetDefinitions().filter((d) => d.placement === 'desktop')
-}
-
-export function widgetNeedsService(
-  def: WidgetDefinition,
-  service: WidgetServiceId,
-): boolean {
-  return def.services.includes(service)
 }

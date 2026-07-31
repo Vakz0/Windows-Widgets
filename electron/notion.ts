@@ -51,18 +51,28 @@ interface ParseContext {
   databaseId: string
 }
 
-function richTextToPlain(value: unknown): string {
+function richTextArrayToPlain(
+  value: unknown,
+  key: 'rich_text' | 'title',
+): string {
   if (!value || typeof value !== 'object') return ''
-  const rt = (value as { rich_text?: Array<{ plain_text?: string }> }).rich_text
-  if (!Array.isArray(rt)) return ''
-  return rt.map((t) => t.plain_text ?? '').join('')
+  const parts = (value as Record<string, unknown>)[key]
+  if (!Array.isArray(parts)) return ''
+  return parts
+    .map((t) =>
+      t && typeof t === 'object'
+        ? String((t as { plain_text?: string }).plain_text ?? '')
+        : '',
+    )
+    .join('')
+}
+
+function richTextToPlain(value: unknown): string {
+  return richTextArrayToPlain(value, 'rich_text')
 }
 
 function titleToPlain(value: unknown): string {
-  if (!value || typeof value !== 'object') return ''
-  const title = (value as { title?: Array<{ plain_text?: string }> }).title
-  if (!Array.isArray(title)) return ''
-  return title.map((t) => t.plain_text ?? '').join('')
+  return richTextArrayToPlain(value, 'title')
 }
 
 function readSelect(value: unknown): { name: string | null; color: string | null } {
@@ -494,17 +504,7 @@ export async function fetchNotionTasks(config: AppConfig): Promise<NotionTask[]>
 function blockToPlain(block: Record<string, unknown>): string {
   const type = String(block.type ?? '')
   const payload = block[type]
-  if (!payload || typeof payload !== 'object') return ''
-  const rich = (payload as { rich_text?: unknown }).rich_text
-  if (Array.isArray(rich)) {
-    return rich
-      .map((t) =>
-        t && typeof t === 'object' ? String((t as { plain_text?: string }).plain_text ?? '') : '',
-      )
-      .join('')
-      .trim()
-  }
-  return ''
+  return richTextArrayToPlain(payload, 'rich_text').trim()
 }
 
 export async function fetchTaskDescription(
@@ -541,8 +541,7 @@ export async function fetchTaskDescription(
 }
 
 function databaseTitle(db: { title?: Array<{ plain_text?: string }> }): string {
-  if (!Array.isArray(db.title)) return 'Database'
-  return db.title.map((t) => t.plain_text ?? '').join('').trim() || 'Database'
+  return richTextArrayToPlain(db, 'title').trim() || 'Database'
 }
 
 function suggestPropertyMapping(

@@ -96,16 +96,12 @@ function isPlaceholderDatabaseId(id: string | undefined): boolean {
   return id.includes('REMPLACE') || id.includes('YOUR_DATABASE')
 }
 
-function hasValidCreds(cfg: AppConfig): boolean {
+export function hasValidNotionCredentials(cfg: AppConfig): boolean {
   return (
     !isPlaceholderToken(cfg.notionToken) &&
     Boolean(cfg.databaseId) &&
     !isPlaceholderDatabaseId(String(cfg.databaseId))
   )
-}
-
-export function hasValidNotionCredentials(cfg: AppConfig): boolean {
-  return hasValidCreds(cfg)
 }
 
 export function loadConfig(): AppConfig {
@@ -119,7 +115,7 @@ export function loadConfig(): AppConfig {
       const raw = JSON.parse(text) as Partial<AppConfig>
       let cfg = applyWidgetsMigration(deepMerge(DEFAULT_CONFIG, raw), raw)
 
-      if (!hasValidCreds(cfg)) {
+      if (!hasValidNotionCredentials(cfg)) {
         if (!fallback) fallback = { ...cfg, demoMode: true }
         continue
       }

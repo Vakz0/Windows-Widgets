@@ -16,7 +16,9 @@
     "app": "electron .",
     "shortcuts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/creer-raccourcis.ps1",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "build": {
     "appId": "com.vakz.lattice-desk",
@@ -81,6 +83,7 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.6",
     "vite-plugin-electron": "^0.28.8",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^3.2.4"
   }
 }

@@ -7,10 +7,14 @@
 import http from 'node:http'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
-import path from 'node:path'
-import { app } from 'electron'
 import type { ActivityCategory, ActivitySiteBreakdown } from '../shared/types'
 import { categoryFromDomain, normalizeDomain } from './activityContext'
+import {
+  bridgeMetaPath,
+  ensureDirs,
+  todayKey,
+  watchPath,
+} from './activity/paths'
 
 export const MEDIA_BRIDGE_PORT = 17_384
 export const MEDIA_BRIDGE_HOST = '127.0.0.1'
@@ -47,29 +51,6 @@ export function setMediaWatchListener(cb: (() => void) | null): void {
   onWatchChange = cb
 }
 
-function activityDir(): string {
-  return path.join(app.getPath('userData'), 'activity')
-}
-
-function daysDir(): string {
-  return path.join(activityDir(), 'days')
-}
-
-function bridgeMetaPath(): string {
-  return path.join(activityDir(), 'media-bridge.json')
-}
-
-function watchPath(date: string): string {
-  return path.join(daysDir(), `${date}.watch.json`)
-}
-
-function todayKey(d = new Date()): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
 function ensureToken(): string {
   if (bridgeToken) return bridgeToken
   const file = bridgeMetaPath()
@@ -89,7 +70,7 @@ function ensureToken(): string {
   }
   bridgeToken = randomBytes(24).toString('hex')
   try {
-    fs.mkdirSync(path.dirname(file), { recursive: true })
+    ensureDirs()
     fs.writeFileSync(
       file,
       `${JSON.stringify(
@@ -212,7 +193,7 @@ function scheduleWatchPersist(date: string): void {
     persistTimer = null
     if (!watchCache || watchCache.date !== date) return
     try {
-      fs.mkdirSync(daysDir(), { recursive: true })
+      ensureDirs()
       const file = watchPath(date)
       const tmp = `${file}.${process.pid}.tmp`
       fs.writeFileSync(tmp, `${JSON.stringify(watchCache.map)}\n`, 'utf8')
@@ -398,7 +379,7 @@ export function stopMediaBridge(): void {
   // Flush pending watch map before closing.
   if (watchCache) {
     try {
-      fs.mkdirSync(daysDir(), { recursive: true })
+      ensureDirs()
       const file = watchPath(watchCache.date)
       const tmp = `${file}.${process.pid}.tmp`
       fs.writeFileSync(tmp, `${JSON.stringify(watchCache.map)}\n`, 'utf8')
