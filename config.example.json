@@ -1,0 +1,44 @@
+{
+  "notionToken": "COLLER_ICI_LE_SECRET_INTEGRATION",
+  "databaseId": "https://www.notion.so/YOUR_DATABASE_ID",
+  "properties": {
+    "title": "Name",
+    "date": "Date",
+    "tag": "Tags",
+    "status": "Priority",
+    "urgency": "Urgency",
+    "workflowStatus": "Status",
+    "doneCheckbox": "Done"
+  },
+  "filters": {
+    "hideCompleted": true,
+    "completedStatusValues": ["Done"]
+  },
+  "projectSources": [
+    {
+      "databaseId": "https://www.notion.so/YOUR_PROJECT_TASKS_DATABASE_ID",
+      "projectPageId": "https://www.notion.so/YOUR_PROJECT_PAGE_ID",
+      "relationProperty": "Project",
+      "label": "Mon projet",
+      "properties": {
+        "title": "Task name",
+        "date": "Due",
+        "tag": "Type",
+        "status": "Priority",
+        "workflowStatus": "Status",
+        "description": "Description"
+      },
+      "filters": {
+        "hideCompleted": true,
+        "completedStatusValues": ["Done"]
+      }
+    }
+  ],
+  "refreshIntervalSeconds": 90,
+  "launchAtStartup": true,
+  "demoMode": false,
+  "updates": {
+    "autoDownload": false
+  },
+  "widgets": {}
+}

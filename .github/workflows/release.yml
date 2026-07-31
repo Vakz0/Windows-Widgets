@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and publish NSIS installer
+        run: npm run dist -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload widgets catalog
+        run: gh release upload "${{ github.ref_name }}" widgets-catalog.json --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # electron-builder sometimes leaves the GitHub release as a draft even with
+      # releaseType: release — undraft explicitly so electron-updater can find it.
+      - name: Publish release (undraft)
+        run: gh release edit "${{ github.ref_name }}" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify release is public with updater assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $metaJson = gh release view $env:TAG --json isDraft,isPrerelease,assets
+          Write-Host $metaJson
+          $meta = $metaJson | ConvertFrom-Json
+
+          if ($meta.isDraft) {
+            Write-Host "::error::Release $env:TAG is still a draft — electron-updater will fail with HTTP 406"
+            exit 1
+          }
+
+          $names = @($meta.assets | ForEach-Object { $_.name })
+          if ($names -notcontains 'latest.yml') {
+            Write-Host "::error::Release $env:TAG is missing latest.yml (required by electron-updater)"
+            exit 1
+          }
+          if (-not ($names | Where-Object { $_ -like '*.exe' })) {
+            Write-Host "::error::Release $env:TAG is missing the NSIS installer (.exe)"
+            exit 1
+          }
+
+          # Public download must work without auth (same path end users / electron-updater use)
+          $url = "https://github.com/${{ github.repository }}/releases/latest/download/latest.yml"
+          $resp = Invoke-WebRequest -Uri $url -UseBasicParsing
+          Write-Host "GET $url -> HTTP $($resp.StatusCode)"
+          if ($resp.StatusCode -ne 200) {
+            Write-Host "::error::Public latest.yml download failed (HTTP $($resp.StatusCode))"
+            exit 1
+          }
+          Write-Host ($resp.Content -split "`n" | Select-Object -First 5 | Out-String)

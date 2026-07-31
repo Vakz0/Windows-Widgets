@@ -1,0 +1,89 @@
+{
+  "name": "lattice-desk",
+  "version": "1.3.0",
+  "description": "Composable desktop widgets for Windows — Notion tasks/calendar, system monitoring, activity tracking",
+  "main": "dist-electron/main.js",
+  "author": "Bastien",
+  "license": "MIT",
+  "scripts": {
+    "build:temp": "dotnet publish tools/cpu-temp/cpu-temp.csproj -c Release -o tools/cpu-temp/publish --nologo",
+    "build:url": "dotnet publish tools/active-url/active-url.csproj -c Release -o tools/active-url/publish --nologo",
+    "build:helpers": "npm run build:temp && npm run build:url",
+    "dev": "npm run build:helpers && vite",
+    "build": "npm run build:helpers && tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "start": "npm run build && electron .",
+    "app": "electron .",
+    "shortcuts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/creer-raccourcis.ps1",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "build": {
+    "appId": "com.vakz.lattice-desk",
+    "productName": "Lattice",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      },
+      {
+        "from": "tools/cpu-temp/publish",
+        "to": "cpu-temp"
+      },
+      {
+        "from": "tools/active-url/publish",
+        "to": "active-url"
+      }
+    ],
+    "asarUnpack": [
+      "**/node_modules/koffi/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Vakz0",
+        "repo": "Lattice",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "electron-updater": "^6.8.9",
+    "extract-zip": "^2.0.1",
+    "koffi": "^3.1.4",
+    "systeminformation": "^5.33.1"
+  },
+  "devDependencies": {
+    "@types/extract-zip": "^2.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,316 @@
+/* Task detail — vue façon page Notion */
+.task-detail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-detail-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.task-detail-breadcrumb {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.task-detail-toolbar-spacer {
+  flex: 1;
+}
+
+/* Même comportement de scrollbar que .cal-scroll : fine, invisible au repos. */
+.task-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 4px 22px 16px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.task-detail-scroll:hover {
+  scrollbar-color: var(--scrollbar-idle) transparent;
+}
+
+.task-detail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.task-detail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-detail-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: var(--radius-pill);
+}
+
+.task-detail-scroll:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+}
+
+.task-detail-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+.task-detail-saving {
+  font-size: 11px;
+  color: var(--text-45);
+  white-space: nowrap;
+}
+
+.task-detail-title-input {
+  display: block;
+  width: 100%;
+  margin: 8px 0 10px;
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--text);
+  word-break: break-word;
+  field-sizing: content;
+  flex-shrink: 0;
+}
+
+.task-detail-title-input:focus {
+  outline: none;
+}
+
+.task-detail-props {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.detail-prop-row {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 5px;
+  transition: background 0.12s ease;
+}
+
+.detail-prop-row:hover {
+  background: var(--hover-bg);
+}
+
+.detail-prop-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 128px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-45);
+}
+
+.detail-prop-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-45);
+}
+
+.detail-prop-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.detail-plain {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.detail-empty {
+  font-size: 13.5px;
+  color: var(--text-38);
+}
+
+.detail-date-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  padding: 2px 0;
+  color-scheme: dark;
+  min-width: 0;
+}
+
+.detail-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+.detail-select {
+  position: relative;
+  min-width: 0;
+}
+
+.detail-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 4px;
+}
+
+.detail-select-trigger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.detail-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 160px;
+  max-width: 240px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-idle) transparent;
+}
+
+.detail-select-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 5px 6px;
+  border-radius: 5px;
+  text-align: left;
+}
+
+.detail-select-option:hover,
+.detail-select-option.is-active {
+  background: var(--hover-bg);
+}
+
+.detail-select-option.is-clear {
+  font-size: 12.5px;
+  color: var(--text-45);
+}
+
+.detail-select-loading {
+  padding: 8px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.detail-done-check {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.detail-done-check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+}
+
+.detail-done-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--text-45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.detail-done-box.is-checked {
+  background: var(--status-ok);
+  border-color: var(--status-ok);
+  color: #122018;
+}
+
+.detail-done-check input:focus-visible + .detail-done-box {
+  outline: 2px solid rgba(224, 62, 62, 0.55);
+  outline-offset: 2px;
+}
+
+.detail-done-check input:disabled + .detail-done-box {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.task-detail-content {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+}
+
+.task-detail-content-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-detail-content-input {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 120px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.task-detail-content-input::placeholder {
+  color: var(--text-38);
+}
+

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Lattice">
+  <defs>
+    <linearGradient id="tileFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3a3a3a"/>
+      <stop offset="100%" stop-color="#2a2a2a"/>
+    </linearGradient>
+    <linearGradient id="tileFaceSoft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#323232"/>
+      <stop offset="100%" stop-color="#252525"/>
+    </linearGradient>
+    <linearGradient id="accentFace" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ef5555"/>
+      <stop offset="100%" stop-color="#c93434"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Connection lattice -->
+  <g stroke="#5a5a58" stroke-width="1.5" stroke-linecap="round" opacity="0.85">
+    <path d="M28 28 H100 M28 64 H100 M28 100 H100"/>
+    <path d="M28 28 V100 M64 28 V100 M100 28 V100"/>
+    <path d="M28 28 L64 64 L100 28"/>
+    <path d="M28 100 L64 64 L100 100"/>
+    <path d="M28 64 L64 28 L100 64 L64 100 Z"/>
+  </g>
+
+  <!-- Widget tiles -->
+  <g filter="url(#softShadow)">
+    <rect x="16" y="16" width="24" height="24" rx="5" fill="url(#tileFace)" stroke="#4a4a48" stroke-width="1"/>
+    <rect x="52" y="16" width="24" height="24" rx="5" fill="url(#tileFaceSoft)" stroke="#4a4a48" stroke-width="1"/>
+    <rect x="88" y="16" width="24" height="24" rx="5" fill="url(#tileFace)" stroke="#4a4a48" stroke-width="1"/>
+
+    <rect x="16" y="52" width="24" height="24" rx="5" fill="url(#tileFaceSoft)" stroke="#4a4a48" stroke-width="1"/>
+    <rect x="52" y="52" width="24" height="24" rx="5" fill="url(#accentFace)" stroke="#ff7a7a" stroke-width="1.25"/>
+    <rect x="88" y="52" width="24" height="24" rx="5" fill="url(#tileFaceSoft)" stroke="#4a4a48" stroke-width="1"/>
+
+    <rect x="16" y="88" width="24" height="24" rx="5" fill="url(#tileFace)" stroke="#4a4a48" stroke-width="1"/>
+    <rect x="52" y="88" width="24" height="24" rx="5" fill="url(#tileFaceSoft)" stroke="#4a4a48" stroke-width="1"/>
+    <rect x="88" y="88" width="24" height="24" rx="5" fill="url(#tileFace)" stroke="#4a4a48" stroke-width="1"/>
+  </g>
+
+  <!-- Inner detail lines on tiles -->
+  <g stroke="#f1f1ef" stroke-opacity="0.18" stroke-width="1.25" stroke-linecap="round">
+    <path d="M21 24 H35 M21 28 H31"/>
+    <path d="M57 24 H71 M57 28 H67"/>
+    <path d="M93 24 H107 M93 28 H103"/>
+    <path d="M21 60 H35 M21 64 H31"/>
+    <path d="M93 60 H107 M93 64 H103"/>
+    <path d="M21 96 H35 M21 100 H31"/>
+    <path d="M57 96 H71 M57 100 H67"/>
+    <path d="M93 96 H107 M93 100 H103"/>
+  </g>
+
+  <!-- Accent tile detail -->
+  <g stroke="#f1f1ef" stroke-opacity="0.55" stroke-width="1.25" stroke-linecap="round">
+    <path d="M57 60 H71 M57 64 H67 M57 68 H64"/>
+  </g>
+
+  <!-- Nodes -->
+  <g>
+    <circle cx="28" cy="28" r="3.2" fill="#f1f1ef"/>
+    <circle cx="64" cy="28" r="3.2" fill="#c8c7c4"/>
+    <circle cx="100" cy="28" r="3.2" fill="#f1f1ef"/>
+    <circle cx="28" cy="64" r="3.2" fill="#c8c7c4"/>
+    <circle cx="64" cy="64" r="4.2" fill="#f1f1ef" stroke="#e03e3e" stroke-width="1.5"/>
+    <circle cx="100" cy="64" r="3.2" fill="#c8c7c4"/>
+    <circle cx="28" cy="100" r="3.2" fill="#f1f1ef"/>
+    <circle cx="64" cy="100" r="3.2" fill="#c8c7c4"/>
+    <circle cx="100" cy="100" r="3.2" fill="#f1f1ef"/>
+  </g>
+</svg>

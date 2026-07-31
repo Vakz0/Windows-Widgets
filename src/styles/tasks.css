@@ -1,0 +1,79 @@
+/* Tasks list — même langage carte/typo que le calendrier */
+.tasks-body {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  border-top: 1px solid var(--cal-line);
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.tasks-body:hover {
+  scrollbar-color: var(--scrollbar-idle) transparent;
+}
+
+.tasks-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tasks-body::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.tasks-body::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.tasks-body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.tasks-body:hover::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+}
+
+.tasks-body::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+.tasks-body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.tasks-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-45);
+  line-height: 1.2;
+}
+
+.tasks-source {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--hover-bg);
+}
+
+.empty-state {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 24px 8px;
+  text-align: center;
+}
+

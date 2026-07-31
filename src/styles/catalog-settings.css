@@ -1,0 +1,347 @@
+/* —— Catalogue detail & settings —— */
+.catalog-detail-card {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-idle) transparent;
+}
+
+.catalog-detail-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.catalog-detail-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.catalog-detail-fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--divider);
+}
+
+.catalog-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.catalog-detail-field dt {
+  font-size: 10px;
+  font-weight: 560;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-38);
+}
+
+.catalog-detail-field dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.catalog-detail-cta {
+  margin-top: auto;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(224, 62, 62, 0.16);
+  border: 1px solid rgba(224, 62, 62, 0.35);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.catalog-detail-cta:hover:not(:disabled) {
+  background: rgba(224, 62, 62, 0.24);
+  border-color: rgba(224, 62, 62, 0.5);
+}
+
+.catalog-detail-cta.is-on {
+  background: var(--status-ok-bg);
+  border-color: var(--status-ok-border);
+  color: var(--status-ok-text);
+}
+
+.catalog-detail-cta.is-on:hover:not(:disabled) {
+  background: var(--status-ok-bg-hover);
+}
+
+.catalog-detail-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.catalog-settings {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-idle) transparent;
+}
+
+.catalog-settings::-webkit-scrollbar {
+  width: 8px;
+}
+
+.catalog-settings::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-pill);
+}
+
+.catalog-settings::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.catalog-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.catalog-settings-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-45);
+}
+
+.catalog-settings-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.catalog-settings-hint code {
+  font-size: 0.95em;
+  color: var(--text-62);
+}
+
+.catalog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catalog-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.catalog-field-help {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.catalog-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.catalog-input {
+  width: 100px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.catalog-input-wide {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.catalog-input:focus {
+  outline: 2px solid rgba(224, 62, 62, 0.45);
+  outline-offset: 1px;
+}
+
+.catalog-prop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+@media (max-width: 640px) {
+  .catalog-prop-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.catalog-notion-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.catalog-notion-status[data-state='ok'] {
+  border-color: rgba(77, 173, 127, 0.35);
+  color: var(--status-ok-text);
+}
+
+.catalog-notion-status[data-state='warn'] {
+  border-color: rgba(224, 180, 80, 0.35);
+}
+
+.catalog-notion-token-hint {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.catalog-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.catalog-detail-cta-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.catalog-detail-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.catalog-link-btn {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  color: var(--accent, #e05c5c);
+  font: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.catalog-notion-test-msg {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.catalog-notion-test-msg[data-ok='true'] {
+  color: var(--status-ok-text);
+}
+
+.catalog-field-suffix {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.catalog-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+  cursor: pointer;
+}
+
+.catalog-toggle-copy {
+  min-width: 0;
+}
+
+.catalog-settings-path {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  word-break: break-all;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.catalog-settings-card .catalog-detail-cta {
+  margin-top: 0;
+  width: auto;
+  align-self: flex-start;
+}
+
+.catalog-settings-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px 0;
+}
+
+.catalog-update-status {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.catalog-version {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-55);
+  letter-spacing: 0.02em;
+}
+
+.catalog-save-status {
+  font-size: 12px;
+  color: var(--status-ok-text);
+}
+

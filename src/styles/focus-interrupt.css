@@ -1,0 +1,342 @@
+/* —— Activity focus, footer & interrupt —— */
+.activity-footer {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activity-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--radius-card-sm);
+  background: var(--monitor-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.activity-afk-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-62);
+}
+
+.activity-banner {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: var(--radius-card-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.activity-banner-warn {
+  color: var(--warning-text, #c9a227);
+  background: var(--warning-bg, rgba(201, 162, 39, 0.12));
+  border-color: rgba(201, 162, 39, 0.28);
+}
+
+.activity-banner code {
+  font-size: 11px;
+}
+
+.activity-btn {
+  font-size: 12px;
+  font-weight: 650;
+  padding: 7px 12px;
+  border-radius: var(--radius-control);
+  background: var(--status-ok-bg);
+  border: 1px solid var(--status-ok-border);
+  color: var(--status-ok-text);
+}
+
+.activity-btn:hover:not(:disabled) {
+  background: var(--status-ok-bg-hover);
+}
+
+.activity-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.activity-btn-ghost {
+  background: var(--monitor-surface);
+  border-color: var(--border-subtle);
+  color: var(--text-62);
+}
+
+.activity-btn-ghost:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+
+.activity-btn-danger {
+  background: var(--danger-bg);
+  border-color: rgba(224, 62, 62, 0.35);
+  color: var(--danger-text);
+}
+
+.activity-btn-danger:hover:not(:disabled) {
+  background: var(--danger-bg-strong);
+}
+
+.activity-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.activity-hint.is-error {
+  color: var(--danger-text);
+  word-break: break-word;
+}
+
+.activity-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-focus-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card, 10px);
+  background: var(--monitor-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.activity-focus-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.activity-focus-task {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-focus-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.activity-focus-status.is-active {
+  color: var(--status-ok-text);
+}
+
+.activity-focus-status.is-interrupted {
+  color: var(--danger-text);
+}
+
+.activity-focus-status.is-paused {
+  color: var(--warning-text, #c9a227);
+}
+
+.activity-focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activity-focus-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.activity-focus-input {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.activity-journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-journal-row {
+  padding: 8px 10px;
+  border-radius: var(--radius-card, 10px);
+  background: var(--monitor-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.activity-journal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.activity-journal-action {
+  font-weight: 650;
+  color: var(--text-62);
+}
+
+.activity-journal-note {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.activity-journal-note.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.focus-interrupt-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 14px 16px 16px;
+  gap: 10px;
+}
+
+.focus-interrupt-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.focus-interrupt-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.focus-interrupt-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.focus-interrupt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.focus-interrupt-task,
+.focus-interrupt-context {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-62);
+  line-height: 1.35;
+}
+
+.focus-interrupt-label {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.focus-interrupt-note {
+  width: 100%;
+  resize: vertical;
+  min-height: 88px;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-subtle);
+  background: var(--monitor-surface);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.focus-interrupt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.task-detail-focus-btn {
+  font-size: 11px;
+  font-weight: 650;
+  padding: 5px 9px;
+  border-radius: var(--radius-control);
+  background: var(--status-ok-bg);
+  border: 1px solid var(--status-ok-border);
+  color: var(--status-ok-text);
+  white-space: nowrap;
+}
+
+.task-detail-focus-btn:hover:not(:disabled) {
+  background: var(--status-ok-bg-hover);
+}
+
+.task-detail-focus-btn:disabled {
+  opacity: 0.55;
+}
+
+.task-detail-focus-hint {
+  margin: 0 12px 8px;
+  font-size: 11px;
+  color: var(--status-ok-text);
+}
+
+.task-detail-focus-hint.is-error {
+  color: var(--danger-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-live-dot,
+  .activity-cat-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .skeleton,
+  .spinner,
+  .cal-loading-dot,
+  .monitor-live-dot,
+  .monitor-gauge.tone-loading .monitor-ring-track,
+  .monitor-gauge.tone-loading .monitor-ring-value {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
