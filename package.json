@@ -56,7 +56,8 @@
       {
         "provider": "github",
         "owner": "Vakz0",
-        "repo": "Lattice"
+        "repo": "Lattice",
+        "releaseType": "release"
       }
     ]
   },
