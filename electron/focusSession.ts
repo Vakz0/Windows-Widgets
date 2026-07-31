@@ -99,7 +99,7 @@ function emitChanged(): void {
 
 async function persistSession(): Promise<void> {
   ensureDirs()
-  const file = focusSessionPath()
+  const file = assertWithin(activityDir(), focusSessionPath())
   if (!session) {
     try {
       await fsp.access(file)
@@ -113,18 +113,14 @@ async function persistSession(): Promise<void> {
     }
     return
   }
-  await fsp.writeFile(
-    assertWithin(activityDir(), file),
-    `${JSON.stringify(session, null, 2)}\n`,
-    'utf8',
-  )
+  await fsp.writeFile(file, `${JSON.stringify(session, null, 2)}\n`, 'utf8')
 }
 
 async function loadPersistedSession(): Promise<void> {
   if (stateLoaded) return
   stateLoaded = true
   try {
-    const file = focusSessionPath()
+    const file = assertWithin(activityDir(), focusSessionPath())
     try {
       await fsp.access(file)
     } catch {
@@ -263,12 +259,16 @@ export async function updateFocusAllowlist(patch: Partial<FocusAllowlist>): Prom
 
 async function appendJournal(entry: FocusJournalEntry): Promise<void> {
   ensureDirs()
-  await fsp.appendFile(focusJournalPath(), `${JSON.stringify(entry)}\n`, 'utf8')
+  await fsp.appendFile(
+    assertWithin(activityDir(), focusJournalPath()),
+    `${JSON.stringify(entry)}\n`,
+    'utf8',
+  )
 }
 
 export async function getFocusJournal(date?: string): Promise<FocusJournalEntry[]> {
   const key = date && isDayKey(date) ? date : todayKey()
-  const file = focusJournalPath()
+  const file = assertWithin(activityDir(), focusJournalPath())
   try {
     await fsp.access(file)
   } catch {
@@ -289,7 +289,7 @@ export async function getFocusJournal(date?: string): Promise<FocusJournalEntry[
 }
 
 export async function readFocusJournalInRange(from: string, to: string): Promise<FocusJournalEntry[]> {
-  const file = focusJournalPath()
+  const file = assertWithin(activityDir(), focusJournalPath())
   try {
     await fsp.access(file)
   } catch {
@@ -311,7 +311,7 @@ export async function readFocusJournalInRange(from: string, to: string): Promise
 }
 
 export async function clearFocusJournalFile(): Promise<void> {
-  const file = focusJournalPath()
+  const file = assertWithin(activityDir(), focusJournalPath())
   try {
     await fsp.access(file)
     try {

@@ -8,15 +8,18 @@ import http from 'node:http'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
+import path from 'node:path'
 import type { ActivityCategory, ActivitySiteBreakdown } from '../shared/types'
 import { categoryFromDomain, normalizeDomain } from './activityContext'
 import {
+  activityDir,
   bridgeMetaPath,
   daysDir,
   ensureDirs,
   todayKey,
   watchPath,
   assertWithin,
+  resolveWithin,
 } from './activity/paths'
 
 const MEDIA_BRIDGE_PORT = 17_384
@@ -56,7 +59,7 @@ export function setMediaWatchListener(cb: (() => void) | null): void {
 
 async function ensureToken(): Promise<string> {
   if (bridgeToken) return bridgeToken
-  const file = bridgeMetaPath()
+  const file = assertWithin(activityDir(), bridgeMetaPath())
   try {
     await fsp.access(file)
     const raw = JSON.parse(await fsp.readFile(file, 'utf8')) as {
@@ -160,7 +163,7 @@ export function isMediaKeepAwakeActive(): boolean {
 }
 
 function loadWatchMapFromDisk(date: string): Record<string, number> {
-  const file = watchPath(date)
+  const file = assertWithin(daysDir(), watchPath(date))
   try {
     if (!fs.existsSync(file)) return {}
     const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>
@@ -209,9 +212,9 @@ function scheduleWatchPersist(date: string): void {
       try {
         ensureDirs()
         const file = watchPath(date)
-        const tmp = assertWithin(daysDir(), `${file}.${process.pid}.tmp`)
+        const tmp = resolveWithin(daysDir(), `${path.basename(file)}.${process.pid}.tmp`)
         await fsp.writeFile(tmp, `${JSON.stringify(watchCache!.map)}\n`, 'utf8')
-        await fsp.rename(tmp, file)
+        await fsp.rename(tmp, assertWithin(daysDir(), file))
       } catch (err) {
         console.error('Activity media bridge: watch persist failed', err)
       }
@@ -414,9 +417,9 @@ export function stopMediaBridge(): void {
       try {
         ensureDirs()
         const file = watchPath(snapshot.date)
-        const tmp = assertWithin(daysDir(), `${file}.${process.pid}.tmp`)
+        const tmp = resolveWithin(daysDir(), `${path.basename(file)}.${process.pid}.tmp`)
         await fsp.writeFile(tmp, `${JSON.stringify(snapshot.map)}\n`, 'utf8')
-        await fsp.rename(tmp, file)
+        await fsp.rename(tmp, assertWithin(daysDir(), file))
       } catch (err) {
         console.error('Activity media bridge: final watch flush failed', err)
       }

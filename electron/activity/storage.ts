@@ -12,6 +12,7 @@ import {
   activityDir,
   assertWithin,
   dayFile,
+  daysDir,
   ensureDirs,
   feedbackPath,
   rulesPath,
@@ -31,8 +32,9 @@ let feedbackCountCache: { date: string; count: number } | null = null
 
 function loadJsonFile<T>(file: string, fallback: T): T {
   try {
-    if (!fs.existsSync(file)) return structuredClone(fallback)
-    const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<T>
+    const target = assertWithin(activityDir(), file)
+    if (!fs.existsSync(target)) return structuredClone(fallback)
+    const raw = JSON.parse(fs.readFileSync(target, 'utf8')) as Partial<T>
     return { ...structuredClone(fallback), ...raw } as T
   } catch (err) {
     console.debug('loadJsonFile: using fallback', err)
@@ -140,7 +142,11 @@ export async function appendSegment(segment: ActivitySegment): Promise<void> {
       start: cursor.toISOString(),
       end: sliceEnd.toISOString(),
     }
-    await fsp.appendFile(dayFile(day), `${JSON.stringify(slice)}\n`, 'utf8')
+    await fsp.appendFile(
+      assertWithin(daysDir(), dayFile(day)),
+      `${JSON.stringify(slice)}\n`,
+      'utf8',
+    )
     if (dayCacheKey === day) {
       dayCacheSegments.push(slice)
     } else {
@@ -153,7 +159,7 @@ export async function appendSegment(segment: ActivitySegment): Promise<void> {
 export async function readDaySegments(date: string): Promise<ActivitySegment[]> {
   if (dayCacheKey === date) return dayCacheSegments
 
-  const file = dayFile(date)
+  const file = assertWithin(daysDir(), dayFile(date))
   const out: ActivitySegment[] = []
   try {
     await fsp.access(file)
@@ -175,7 +181,7 @@ export async function readDaySegments(date: string): Promise<ActivitySegment[]> 
 }
 
 export async function readFeedbackEntries(): Promise<ActivityFeedbackEntry[]> {
-  const file = feedbackPath()
+  const file = assertWithin(activityDir(), feedbackPath())
   try {
     await fsp.access(file)
   } catch {
@@ -196,7 +202,11 @@ export async function readFeedbackEntries(): Promise<ActivityFeedbackEntry[]> {
 
 export async function appendFeedback(entry: ActivityFeedbackEntry): Promise<void> {
   ensureDirs()
-  await fsp.appendFile(feedbackPath(), `${JSON.stringify(entry)}\n`, 'utf8')
+  await fsp.appendFile(
+    assertWithin(activityDir(), feedbackPath()),
+    `${JSON.stringify(entry)}\n`,
+    'utf8',
+  )
   const day = entry.at.slice(0, 10)
   if (feedbackCountCache?.date === day) {
     feedbackCountCache = { date: day, count: feedbackCountCache.count + 1 }

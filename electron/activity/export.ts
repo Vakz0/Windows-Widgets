@@ -1,11 +1,10 @@
 import fs from 'node:fs/promises'
-import path from 'node:path'
 import { app, dialog } from 'electron'
 import type { ActivityExportFormat, ActivitySegment } from '../../shared/types'
 import { readFocusJournalInRange } from '../focusSession'
 import { readWatchMap } from '../activityMediaBridge'
 import { buildSummary, buildTransitions, type SummaryDeps } from './aggregator'
-import { listDayFilesInRange, isDayKey, todayKey } from './paths'
+import { assertWithin, listDayFilesInRange, isDayKey, todayKey, resolveWithin } from './paths'
 import { liveOpenSegment } from './poll'
 import { segmentMs } from './segmentUtils'
 import {
@@ -58,9 +57,11 @@ export async function exportActivity(opts: {
       ? `lattice-activity-${from}_${to}.csv`
       : `lattice-activity-${from}_${to}.json`
 
+  const documentsDir = app.getPath('documents')
+  const homeDir = app.getPath('home')
   const result = await dialog.showSaveDialog({
     title: 'Exporter l’activité',
-    defaultPath: path.join(app.getPath('documents'), defaultName),
+    defaultPath: resolveWithin(documentsDir, defaultName),
     filters:
       opts.format === 'csv'
         ? [{ name: 'CSV', extensions: ['csv'] }]
@@ -70,8 +71,10 @@ export async function exportActivity(opts: {
     return { ok: false, message: 'Export annulé.' }
   }
 
-  const exportPath = path.resolve(result.filePath)
-  if (exportPath.includes('\0')) {
+  let exportPath: string
+  try {
+    exportPath = assertWithin(homeDir, result.filePath)
+  } catch {
     return { ok: false, message: 'Chemin d’export invalide.' }
   }
 
