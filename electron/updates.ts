@@ -13,6 +13,21 @@ let state: AppUpdateState = { status: 'idle' }
 let deps: AppUpdaterDeps | null = null
 let wired = false
 
+const MISSING_RELEASE_MESSAGE =
+  'Impossible de trouver une release GitHub publiée (latest.yml manquant).'
+
+function formatUpdaterError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  if (
+    /ERR_UPDATER_LATEST_VERSION_NOT_FOUND|Cannot parse releases feed|HttpError:\s*406/i.test(
+      message,
+    )
+  ) {
+    return MISSING_RELEASE_MESSAGE
+  }
+  return message || 'Erreur de mise à jour'
+}
+
 function setState(next: AppUpdateState): void {
   state = next
   broadcastToAllWindows('app-update-status', state)
@@ -80,7 +95,7 @@ function wireEvents(): void {
   autoUpdater.on('error', (err) => {
     setState({
       status: 'error',
-      message: err?.message || 'Erreur de mise à jour',
+      message: formatUpdaterError(err),
     })
   })
 }
@@ -123,8 +138,10 @@ export async function checkForAppUpdates(opts?: {
     await autoUpdater.checkForUpdates()
     return state
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    const next: AppUpdateState = { status: 'error', message }
+    const next: AppUpdateState = {
+      status: 'error',
+      message: formatUpdaterError(err),
+    }
     // Always surface errors so a silent startup check doesn't leave UI stuck on "checking"
     setState(next)
     return next
@@ -142,7 +159,7 @@ export function downloadAppUpdate(): void {
   void autoUpdater.downloadUpdate().catch((err) => {
     setState({
       status: 'error',
-      message: err instanceof Error ? err.message : String(err),
+      message: formatUpdaterError(err),
     })
   })
 }
@@ -154,7 +171,7 @@ export function installAppUpdate(): void {
   } catch (err) {
     setState({
       status: 'error',
-      message: err instanceof Error ? err.message : String(err),
+      message: formatUpdaterError(err),
     })
   }
 }
