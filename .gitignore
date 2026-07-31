@@ -15,4 +15,10 @@ config.json
 .DS_Store
 Thumbs.db
 *.local
+<<<<<<< HEAD
  
+=======
+
+# Instructions agent (contexte Cursor uniquement, pas sur GitHub)
+docs/fr/guide-documentation.md
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644

@@ -34,8 +34,12 @@ function normalizeDomain(originOrHost) {
     let host = new URL(raw).hostname.toLowerCase().replace(/\.$/, '')
     if (host.startsWith('www.')) host = host.slice(4)
     return host || null
+<<<<<<< HEAD
   } catch (err) {
     console.debug('normalizeDomain: ignored', err)
+=======
+  } catch {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return null
   }
 }
@@ -47,6 +51,7 @@ function normalizeDomain(originOrHost) {
 function playingDomains() {
   /** @type {Map<string, { title: string | null, origin: string | null, at: number }>} */
   const map = new Map()
+<<<<<<< HEAD
   const states = [...tabFrames.values()].flatMap((frames) => [...frames.values()])
   for (const st of states) {
     if (!st.playing) continue
@@ -59,6 +64,21 @@ function playingDomains() {
         origin: st.origin,
         at: st.at,
       })
+=======
+  for (const frames of tabFrames.values()) {
+    for (const st of frames.values()) {
+      if (!st.playing) continue
+      const domain = normalizeDomain(st.origin)
+      if (!domain) continue
+      const prev = map.get(domain)
+      if (!prev || st.at >= prev.at) {
+        map.set(domain, {
+          title: st.title,
+          origin: st.origin,
+          at: st.at,
+        })
+      }
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   return map
@@ -213,6 +233,7 @@ chrome.webNavigation?.onCommitted?.addListener?.((details) => {
 async function injectOpenTabs() {
   try {
     const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] })
+<<<<<<< HEAD
     await Promise.all(
       tabs.map(async (tab) => {
         if (typeof tab.id !== 'number') return
@@ -228,6 +249,21 @@ async function injectOpenTabs() {
     )
   } catch (err) {
     console.debug('injectOpenTabs: missing permission', err)
+=======
+    for (const tab of tabs) {
+      if (typeof tab.id !== 'number') continue
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: true },
+          files: ['content.js'],
+        })
+      } catch {
+        /* chrome://, PDF, etc. */
+      }
+    }
+  } catch {
+    /* missing permission */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
 }
 

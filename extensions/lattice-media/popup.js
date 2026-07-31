@@ -17,7 +17,11 @@ function domainFromOrigin(origin) {
 chrome.storage.session.get(
   { lastOk: null, lastError: null, lastPayload: null, lastAt: null },
   (data) => {
+<<<<<<< HEAD
     if (data.lastOk && data.lastPayload?.playing) {
+=======
+    if (data.lastOk === true && data.lastPayload?.playing) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       const domain =
         domainFromOrigin(data.lastPayload.origin) ||
         data.lastPayload.watch?.[0]?.domain ||
@@ -28,7 +32,11 @@ chrome.storage.session.get(
         : 'Lecture signalée (temps → Lattice)'
       return
     }
+<<<<<<< HEAD
     if (data.lastOk) {
+=======
+    if (data.lastOk === true) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       statusEl.className = 'row'
       statusEl.textContent = 'Connecté · pas de lecture'
       return

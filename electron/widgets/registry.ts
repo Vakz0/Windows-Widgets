@@ -48,6 +48,7 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
   },
 ]
 
+<<<<<<< HEAD
 /** Cached defs for sync hot paths (power mode, hasService). Warmed by getAllWidgetDefinitions. */
 let defsCache: WidgetDefinition[] = [...BUILTIN_WIDGETS]
 
@@ -73,4 +74,17 @@ export function getWidgetDefinitionCached(id: string): WidgetDefinition | undefi
 
 export function getDesktopWidgetDefinitionsCached(): WidgetDefinition[] {
   return defsCache.filter((d) => d.placement === 'desktop')
+=======
+/** Définitions builtin + packages externes découverts sous userData/widgets. */
+export function getAllWidgetDefinitions(): WidgetDefinition[] {
+  return [...BUILTIN_WIDGETS, ...discoverExternalWidgets()]
+}
+
+export function getWidgetDefinition(id: string): WidgetDefinition | undefined {
+  return getAllWidgetDefinitions().find((d) => d.id === id)
+}
+
+export function getDesktopWidgetDefinitions(): WidgetDefinition[] {
+  return getAllWidgetDefinitions().filter((d) => d.placement === 'desktop')
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }

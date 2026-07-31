@@ -50,8 +50,12 @@ function initWin32(): boolean {
     )
     CloseHandle = kernel32.func('int __stdcall CloseHandle(void *hObject)')
     QueryFullProcessImageNameW = kernel32.func(
+<<<<<<< HEAD
       'int __stdcall QueryFullProcessImageNameW(void *hProcess, uint32 dwFlags, ' +
         'void *lpExeName, _Inout_ uint32 *lpdwSize)',
+=======
+      'int __stdcall QueryFullProcessImageNameW(void *hProcess, uint32 dwFlags, void *lpExeName, _Inout_ uint32 *lpdwSize)',
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     )
     win32Ready = true
     return true
@@ -68,11 +72,18 @@ function readWideString(buf: Buffer, charCount: number): string {
 }
 
 function hwndAddress(hwnd: unknown): number | null {
+<<<<<<< HEAD
   if (hwnd === null || hwnd === undefined) return null
   try {
     return Number(koffi.address(hwnd as never))
   } catch (err) {
     console.debug('hwndAddress: ignored', err)
+=======
+  if (hwnd == null) return null
+  try {
+    return Number(koffi.address(hwnd as never))
+  } catch {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return null
   }
 }
@@ -82,18 +93,31 @@ function nativeHandleAddress(win: BrowserWindow): number | null {
     const buf = win.getNativeWindowHandle()
     if (buf.length >= 8) return Number(buf.readBigUInt64LE(0))
     if (buf.length >= 4) return buf.readUInt32LE(0)
+<<<<<<< HEAD
   } catch (err) {
     console.debug('nativeHandleAddress: ignored', err)
+=======
+  } catch {
+    /* ignore */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   return null
 }
 
 function isLatticeHwnd(hwndAddr: number | null): boolean {
+<<<<<<< HEAD
   if (hwndAddr === null || hwndAddr === undefined || hwndAddr === 0) return false
   for (const win of BrowserWindow.getAllWindows()) {
     if (win.isDestroyed()) continue
     const h = nativeHandleAddress(win)
     if (h !== null && h !== undefined && h === hwndAddr) return true
+=======
+  if (hwndAddr == null || hwndAddr === 0) return false
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    const h = nativeHandleAddress(win)
+    if (h != null && h === hwndAddr) return true
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   return false
 }
@@ -110,8 +134,13 @@ function isSelfExe(exePath: string | null, pid: number): boolean {
       const base = path.basename(theirs, path.extname(theirs))
       if (base !== 'electron') return true
     }
+<<<<<<< HEAD
   } catch (err) {
     console.debug('isSelfExe: ignored', err)
+=======
+  } catch {
+    /* ignore */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   return false
 }

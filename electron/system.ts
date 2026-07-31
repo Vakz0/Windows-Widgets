@@ -1,7 +1,10 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs'
+<<<<<<< HEAD
 import fsp from 'node:fs/promises'
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,6 +14,7 @@ import type { SystemStats } from '../shared/types'
 
 const execFileAsync = promisify(execFile)
 
+<<<<<<< HEAD
 /** Plausible CPU package temperature bounds (°C). */
 const TEMP_CELSIUS_MIN = 1
 const TEMP_CELSIUS_MAX = 125
@@ -19,6 +23,8 @@ const TEMP_CACHE_TTL_MS = 45_000
 /** After a failed read, wait before retrying all readers. */
 const TEMP_MISS_COOLDOWN_MS = 15_000
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 let lastCpuLoad = 0
 let prevIdle = 0
 let prevTotal = 0
@@ -55,7 +61,11 @@ function tempCachePath(): string {
   return path.join(app.getPath('userData'), 'temp-cache.json')
 }
 
+<<<<<<< HEAD
 function resolveCpuTempExe(): string | null {
+=======
+export function resolveCpuTempExe(): string | null {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const candidates = [
     path.join(process.resourcesPath, 'cpu-temp', 'cpu-temp.exe'),
     path.join(app.getAppPath(), 'tools', 'cpu-temp', 'publish', 'cpu-temp.exe'),
@@ -68,6 +78,7 @@ function resolveCpuTempExe(): string | null {
   return null
 }
 
+<<<<<<< HEAD
 async function readTempCacheFile(): Promise<number | null> {
   try {
     const file = tempCachePath()
@@ -77,6 +88,13 @@ async function readTempCacheFile(): Promise<number | null> {
       return null
     }
     const raw = JSON.parse(await fsp.readFile(file, 'utf8')) as {
+=======
+function readTempCacheFile(): number | null {
+  try {
+    const file = tempCachePath()
+    if (!fs.existsSync(file)) return null
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       ok?: boolean
       celsius?: number
       updatedAt?: string
@@ -87,15 +105,24 @@ async function readTempCacheFile(): Promise<number | null> {
       if (age > 120_000) return null
     }
     return raw.celsius
+<<<<<<< HEAD
   } catch (err) {
     console.debug('readTempCacheFile: ignored', err)
+=======
+  } catch {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return null
   }
 }
 
 async function tempFromEmbeddedHelper(): Promise<number | null> {
+<<<<<<< HEAD
   const cached = await readTempCacheFile()
   if (cached !== null && cached !== undefined) {
+=======
+  const cached = readTempCacheFile()
+  if (cached != null) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     tempSource = 'capteur intégré'
     return cached
   }
@@ -115,8 +142,13 @@ async function tempFromEmbeddedHelper(): Promise<number | null> {
       tempSource = 'capteur intégré'
       return parsed.celsius
     }
+<<<<<<< HEAD
   } catch (err) {
     console.debug('tempFromEmbeddedHelper: needs admin/driver', err)
+=======
+  } catch {
+    /* needs admin / driver */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   return null
 }
@@ -141,8 +173,13 @@ export async function startTempDaemonElevated(): Promise<{ ok: boolean; message:
     )
     // Give the elevated process a moment to write the first sample
     await new Promise((r) => setTimeout(r, 1500))
+<<<<<<< HEAD
     const value = await readTempCacheFile()
     if (value !== null && value !== undefined) {
+=======
+    const value = readTempCacheFile()
+    if (value != null) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       tempCache = value
       tempFetchedAt = Date.now()
       tempSource = 'capteur intégré'
@@ -158,6 +195,7 @@ export async function startTempDaemonElevated(): Promise<{ ok: boolean; message:
   }
 }
 
+<<<<<<< HEAD
 export async function isTempServiceRunning(): Promise<boolean> {
   try {
     const pidFile = path.join(app.getPath('userData'), 'cpu-temp.pid')
@@ -167,10 +205,18 @@ export async function isTempServiceRunning(): Promise<boolean> {
       return false
     }
     const pid = Number((await fsp.readFile(pidFile, 'utf8')).trim())
+=======
+export function isTempServiceRunning(): boolean {
+  try {
+    const pidFile = path.join(app.getPath('userData'), 'cpu-temp.pid')
+    if (!fs.existsSync(pidFile)) return false
+    const pid = Number(fs.readFileSync(pidFile, 'utf8').trim())
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     if (!Number.isFinite(pid) || pid <= 0) return false
     try {
       process.kill(pid, 0)
       return true
+<<<<<<< HEAD
     } catch (err) {
       console.debug('isTempServiceRunning: process not alive', err)
       try {
@@ -182,15 +228,31 @@ export async function isTempServiceRunning(): Promise<boolean> {
     }
   } catch (err) {
     console.debug('isTempServiceRunning: ignored', err)
+=======
+    } catch {
+      try {
+        fs.unlinkSync(pidFile)
+      } catch {
+        /* ignore */
+      }
+      return false
+    }
+  } catch {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return false
   }
 }
 
+<<<<<<< HEAD
 async function clearTempCache(): Promise<void> {
+=======
+export function clearTempCache(): void {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   tempCache = null
   tempFetchedAt = 0
   tempSource = null
   try {
+<<<<<<< HEAD
     await fsp.unlink(tempCachePath())
   } catch (err) {
     console.debug('clearTempCache: unlink ignored', err)
@@ -224,6 +286,35 @@ export async function stopTempDaemon(): Promise<{
       console.debug('stopTempDaemon: no pid file', err)
     }
     await clearTempCache()
+=======
+    const file = tempCachePath()
+    if (fs.existsSync(file)) fs.unlinkSync(file)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function stopTempDaemon(): { ok: boolean; message: string; stopped: boolean } {
+  try {
+    const wasRunning = isTempServiceRunning()
+    const pidFile = path.join(app.getPath('userData'), 'cpu-temp.pid')
+    if (fs.existsSync(pidFile)) {
+      const pid = Number(fs.readFileSync(pidFile, 'utf8').trim())
+      if (Number.isFinite(pid) && pid > 0) {
+        try {
+          process.kill(pid)
+        } catch {
+          /* already dead */
+        }
+      }
+      try {
+        fs.unlinkSync(pidFile)
+      } catch {
+        /* ignore */
+      }
+    }
+    clearTempCache()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     if (!wasRunning) {
       return {
         ok: true,
@@ -245,7 +336,11 @@ function parseCelsius(text: string): number | null {
   const m = text.replace(',', '.').match(/(-?\d+(?:\.\d+)?)\s*°?\s*C/i)
   if (!m) return null
   const n = Number(m[1])
+<<<<<<< HEAD
   if (!Number.isFinite(n) || n < TEMP_CELSIUS_MIN || n > TEMP_CELSIUS_MAX) return null
+=======
+  if (!Number.isFinite(n) || n < 1 || n > 125) return null
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return Math.round(n)
 }
 
@@ -259,14 +354,22 @@ function walkLhmJson(node: unknown, out: Array<{ name: string; value: number }>)
     /temperature|package|core|cpu|tdie|tctl/i.test(text + String(obj.Type ?? ''))
   ) {
     const c = parseCelsius(valueRaw)
+<<<<<<< HEAD
     if (c !== null && c !== undefined) out.push({ name: text, value: c })
+=======
+    if (c != null) out.push({ name: text, value: c })
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   } else if (
     typeof valueRaw === 'number' &&
     /temperature/i.test(String(obj.Type ?? obj.SensorType ?? ''))
   ) {
+<<<<<<< HEAD
     if (valueRaw > TEMP_CELSIUS_MIN && valueRaw < TEMP_CELSIUS_MAX) {
       out.push({ name: text, value: Math.round(valueRaw) })
     }
+=======
+    if (valueRaw > 1 && valueRaw < 125) out.push({ name: text, value: Math.round(valueRaw) })
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
 
   const children = obj.Children
@@ -315,19 +418,31 @@ function fetchJson(url: string, timeoutMs = 800): Promise<unknown> {
 }
 
 async function tempFromLibreHardwareMonitorWeb(): Promise<number | null> {
+<<<<<<< HEAD
   // intentional: try ports sequentially — first successful response wins
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   for (const port of [8085, 8086, 8090]) {
     try {
       const data = await fetchJson(`http://127.0.0.1:${port}/data.json`)
       const samples: Array<{ name: string; value: number }> = []
       walkLhmJson(data, samples)
       const best = pickBestTemp(samples)
+<<<<<<< HEAD
       if (best !== null && best !== undefined) {
         tempSource = `LibreHardwareMonitor :${port}`
         return best
       }
     } catch (err) {
       console.debug('tempFromLibreHardwareMonitorWeb: try next', err)
+=======
+      if (best != null) {
+        tempSource = `LibreHardwareMonitor :${port}`
+        return best
+      }
+    } catch {
+      /* try next */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   return null
@@ -342,14 +457,20 @@ async function tempFromSystemInformation(): Promise<number | null> {
       const valid = temp.cores.filter((c): c is number => typeof c === 'number' && c > 0)
       if (valid.length) return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length)
     }
+<<<<<<< HEAD
   } catch (err) {
     console.debug('tempFromSystemInformation: ignored', err)
+=======
+  } catch {
+    /* ignore */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
   return null
 }
 
 async function readTemperature(): Promise<number | null> {
   const now = Date.now()
+<<<<<<< HEAD
   if (now - tempFetchedAt < TEMP_CACHE_TTL_MS && tempCache !== null && tempCache !== undefined) {
     return tempCache
   }
@@ -358,6 +479,10 @@ async function readTemperature(): Promise<number | null> {
     (tempCache === null || tempCache === undefined) &&
     tempFetchedAt > 0
   ) {
+=======
+  if (now - tempFetchedAt < 45_000 && tempCache != null) return tempCache
+  if (now - tempFetchedAt < 15_000 && tempCache == null && tempFetchedAt > 0) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     return null
   }
 
@@ -367,18 +492,30 @@ async function readTemperature(): Promise<number | null> {
     tempFromSystemInformation,
   ]
 
+<<<<<<< HEAD
   // intentional: fallback chain — stop at the first reader that returns a value
   for (const reader of readers) {
     try {
       const value = await reader()
       if (value !== null && value !== undefined) {
+=======
+  for (const reader of readers) {
+    try {
+      const value = await reader()
+      if (value != null) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
         tempCache = value
         tempFetchedAt = now
         if (!tempSource) tempSource = 'system'
         return value
       }
+<<<<<<< HEAD
     } catch (err) {
       console.debug('readTemperature: next reader', err)
+=======
+    } catch {
+      /* next */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
 
@@ -387,6 +524,13 @@ async function readTemperature(): Promise<number | null> {
   return tempCache
 }
 
+<<<<<<< HEAD
+=======
+export function getTempSource(): string | null {
+  return tempSource
+}
+
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export async function getSystemStats(opts: {
   includeTemp?: boolean
 } = {}): Promise<SystemStats> {
@@ -403,7 +547,11 @@ export async function getSystemStats(opts: {
     ramUsedGb: Math.round((used / 1024 / 1024 / 1024) * 10) / 10,
     ramTotalGb: Math.round((total / 1024 / 1024 / 1024) * 10) / 10,
     temperatureC,
+<<<<<<< HEAD
     tempSource: temperatureC !== null && temperatureC !== undefined ? tempSource : null,
+=======
+    tempSource: temperatureC != null ? tempSource : null,
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     updatedAt: new Date().toISOString(),
   }
 }

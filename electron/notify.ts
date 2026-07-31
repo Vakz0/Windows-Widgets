@@ -19,8 +19,13 @@ function resolveIcon(): Electron.NativeImage | undefined {
         cachedIcon = img
         return img
       }
+<<<<<<< HEAD
     } catch (err) {
       console.debug('resolveAppIcon: unreadable icon path', err)
+=======
+    } catch {
+      /* ignore unreadable icon paths */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   cachedIcon = undefined

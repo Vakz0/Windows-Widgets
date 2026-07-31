@@ -105,7 +105,11 @@ export function normalizeDomain(host: string): string {
   return h.startsWith('www.') ? h.slice(4) : h
 }
 
+<<<<<<< HEAD
 function parseUrlParts(
+=======
+export function parseUrlParts(
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   rawUrl: string | null | undefined,
   detail: ActivityBrowserDetail,
 ): { domain: string | null; urlPath: string | null } {
@@ -157,6 +161,7 @@ export function categoryFromDomain(
   return null
 }
 
+<<<<<<< HEAD
 type TitleParser = (title: string) => ParsedContext
 
 function parseCursorOrCodeTitle(t: string): ParsedContext {
@@ -232,18 +237,89 @@ const IDE_CHAT_TITLE_PARSERS: Record<string, TitleParser> = {
   msteams: parseChatAppTitle,
 }
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export function parseIdeOrChatTitle(
   app: string,
   title: string | null,
   enabled: boolean,
 ): ParsedContext {
   if (!enabled || !title) return { ...EMPTY }
+<<<<<<< HEAD
   const parser = IDE_CHAT_TITLE_PARSERS[app]
   if (!parser) return { ...EMPTY }
   return parser(title.trim())
 }
 
 function parseBrowserTitleFallback(title: string | null): string | null {
+=======
+
+  const t = title.trim()
+  // Cursor / VS Code: "file — project — Cursor" (hyphen or dash variants)
+  if (app === 'cursor' || app === 'code' || app === 'code - insiders') {
+    const ide = t.match(
+      /^[\s●]*(.+?) (?:—|–|-) (.+?) (?:—|–|-) (Cursor|Visual Studio Code|Code - Insiders)$/i,
+    )
+    if (ide) {
+      return {
+        contextKind: 'ide',
+        fileName: ide[1].trim() || null,
+        projectName: ide[2].trim() || null,
+        domain: null,
+        urlPath: null,
+      }
+    }
+  }
+
+  if (app === 'devenv') {
+    const vs = t.match(/^(.+?) (?:—|–|-) (.+?)(?: (?:—|–|-) Microsoft Visual Studio)?$/i)
+    if (vs) {
+      return {
+        contextKind: 'ide',
+        fileName: vs[1].trim() || null,
+        projectName: vs[2].trim() || null,
+        domain: null,
+        urlPath: null,
+      }
+    }
+  }
+
+  if (app === 'slack') {
+    // "channel (workspace) - Slack" or "channel | workspace - Slack"
+    const slack = t.match(/^(.+?) (?:\||\()(.+?)\)? (?:—|–|-) Slack$/i)
+    if (slack) {
+      return {
+        contextKind: 'chat',
+        fileName: slack[1].trim() || null,
+        projectName: slack[2].trim() || null,
+        domain: null,
+        urlPath: null,
+      }
+    }
+    return {
+      contextKind: 'chat',
+      fileName: null,
+      projectName: null,
+      domain: null,
+      urlPath: null,
+    }
+  }
+
+  if (app === 'discord' || app === 'teams' || app === 'msteams') {
+    return {
+      contextKind: 'chat',
+      fileName: null,
+      projectName: null,
+      domain: null,
+      urlPath: null,
+    }
+  }
+
+  return { ...EMPTY }
+}
+
+export function parseBrowserTitleFallback(title: string | null): string | null {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!title) return null
   // "Page title - Google Chrome" / "Page title - Microsoft Edge"
   const m = title.match(
@@ -268,6 +344,7 @@ export function domainFromBrowserTitle(
   return { domain: null, urlPath: null }
 }
 
+<<<<<<< HEAD
 /** Parse active-url.exe stdout (last JSON line) into a raw URL string. */
 function parseActiveUrlHelperOutput(stdout: string): string | null {
   const line = stdout.trim().split(/\r?\n/).pop() ?? '{}'
@@ -275,6 +352,8 @@ function parseActiveUrlHelperOutput(stdout: string): string | null {
   return typeof parsed.url === 'string' && parsed.url ? parsed.url : null
 }
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export async function fetchBrowserUrl(
   app: string,
   detail: ActivityBrowserDetail,
@@ -300,7 +379,13 @@ export async function fetchBrowserUrl(
       windowsHide: true,
       maxBuffer: 64 * 1024,
     })
+<<<<<<< HEAD
     const rawUrl = parseActiveUrlHelperOutput(stdout)
+=======
+    const line = stdout.trim().split(/\r?\n/).pop() ?? '{}'
+    const parsed = JSON.parse(line) as { url?: string | null }
+    const rawUrl = typeof parsed.url === 'string' && parsed.url ? parsed.url : null
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     urlCache = { at: now, app, url: rawUrl }
     const parts = parseUrlParts(rawUrl, detail)
     return { ...parts, rawUrl }

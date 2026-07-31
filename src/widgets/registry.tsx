@@ -11,7 +11,11 @@ import { FocusInterruptWidget } from './FocusInterruptWidget'
  * Pour un nouveau widget builtin : ajouter l’entrée ici + dans electron/widgets/registry.ts
  * (sauf fenêtres internes comme focus-interrupt, hors catalogue).
  */
+<<<<<<< HEAD
 const widgetComponents: Record<string, ComponentType> = {
+=======
+export const widgetComponents: Record<string, ComponentType> = {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   calendar: CalendarWidget,
   tasks: TasksWidget,
   monitor: MonitorWidget,

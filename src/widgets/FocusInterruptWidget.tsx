@@ -11,7 +11,11 @@ export function FocusInterruptWidget() {
     let alive = true
     void window.lattice.getPendingFocusInterrupt().then((pending) => {
       if (alive && pending) setCtx(pending)
+<<<<<<< HEAD
     }).catch(() => undefined)
+=======
+    })
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const off = window.lattice.onFocusInterrupt((next) => {
       setCtx(next)
       setNote('')

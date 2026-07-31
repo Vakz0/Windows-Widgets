@@ -1,4 +1,8 @@
 import crypto from 'node:crypto'
+<<<<<<< HEAD
+=======
+import fs from 'node:fs'
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import fsp from 'node:fs/promises'
 import path from 'node:path'
 import { app } from 'electron'
@@ -89,7 +93,10 @@ function parseCatalog(raw: unknown): WidgetCatalogEntry[] {
 async function fetchCatalog(): Promise<WidgetCatalogEntry[]> {
   if (catalogCache) return catalogCache
   let lastError: unknown
+<<<<<<< HEAD
   // intentional: try mirror URLs sequentially — first successful catalog wins
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   for (const url of CATALOG_URLS) {
     try {
       const res = await fetch(url, {
@@ -111,7 +118,11 @@ async function fetchCatalog(): Promise<WidgetCatalogEntry[]> {
     : new Error('Impossible de récupérer le catalogue de widgets')
 }
 
+<<<<<<< HEAD
 function invalidateWidgetCatalogCache(): void {
+=======
+export function invalidateWidgetCatalogCache(): void {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   catalogCache = null
 }
 
@@ -128,7 +139,11 @@ function buildUpdateInfos(
       cmpSemver(appVersion, entry.minAppVersion) < 0
     ) {
       status = 'incompatible'
+<<<<<<< HEAD
     } else if (installedVersion === null || installedVersion === undefined) {
+=======
+    } else if (installedVersion == null) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       status = 'not-installed'
     } else if (cmpSemver(entry.version, installedVersion) > 0) {
       status = 'update-available'
@@ -184,6 +199,7 @@ async function extractPackage(zipPath: string, targetId: string): Promise<void> 
     }
 
     const manifestPath = path.join(contentRoot, 'manifest.json')
+<<<<<<< HEAD
     try {
       await fsp.access(manifestPath)
     } catch {
@@ -191,6 +207,13 @@ async function extractPackage(zipPath: string, targetId: string): Promise<void> 
     }
     const manifest = JSON.parse(
       (await fsp.readFile(manifestPath, 'utf8')).replace(/^\uFEFF/, ''),
+=======
+    if (!fs.existsSync(manifestPath)) {
+      throw new Error('Package invalide : manifest.json manquant')
+    }
+    const manifest = JSON.parse(
+      fs.readFileSync(manifestPath, 'utf8').replace(/^\uFEFF/, ''),
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     ) as { id?: string }
     if (manifest.id && manifest.id !== targetId) {
       throw new Error(
@@ -198,6 +221,7 @@ async function extractPackage(zipPath: string, targetId: string): Promise<void> 
       )
     }
 
+<<<<<<< HEAD
     try {
       await fsp.access(finalDir)
       await fsp.rename(finalDir, backup)
@@ -224,6 +248,24 @@ async function extractPackage(zipPath: string, targetId: string): Promise<void> 
         await fsp.rename(backup, finalDir)
       } catch (restoreErr) {
         console.warn('Widget update: failed to restore backup', restoreErr)
+=======
+    if (fs.existsSync(finalDir)) {
+      await fsp.rename(finalDir, backup)
+    }
+    await fsp.rename(contentRoot, finalDir)
+    if (contentRoot !== staging && fs.existsSync(staging)) {
+      await fsp.rm(staging, { recursive: true, force: true })
+    }
+    if (fs.existsSync(backup)) {
+      await fsp.rm(backup, { recursive: true, force: true })
+    }
+  } catch (err) {
+    if (fs.existsSync(backup) && !fs.existsSync(finalDir)) {
+      try {
+        await fsp.rename(backup, finalDir)
+      } catch {
+        /* ignore */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       }
     }
     await fsp.rm(staging, { recursive: true, force: true }).catch(() => undefined)
@@ -238,7 +280,11 @@ export function initWidgetUpdater(next: WidgetUpdaterDeps): void {
 export async function checkWidgetUpdates(opts?: {
   silent?: boolean
 }): Promise<WidgetUpdatesState> {
+<<<<<<< HEAD
   const silent = Boolean(opts?.silent)
+=======
+  const silent = opts?.silent === true
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   setState({
     status: 'checking',
     updates: state.updates,
@@ -248,7 +294,11 @@ export async function checkWidgetUpdates(opts?: {
   try {
     invalidateWidgetCatalogCache()
     const catalog = await fetchCatalog()
+<<<<<<< HEAD
     const updates = buildUpdateInfos(catalog, await getInstalledWidgetVersions())
+=======
+    const updates = buildUpdateInfos(catalog, getInstalledWidgetVersions())
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const toUpdate = updates.filter((u) => u.status === 'update-available')
 
     if (toUpdate.length === 0) {
@@ -270,7 +320,11 @@ export async function checkWidgetUpdates(opts?: {
       message: `${toUpdate.length} widget(s) à mettre à jour`,
     })
 
+<<<<<<< HEAD
     if (deps?.getAutoDownload()) {
+=======
+    if (deps?.getAutoDownload() === true) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       return updateWidgets(
         toUpdate.map((u) => u.id),
         { silent: true },
@@ -351,7 +405,11 @@ export async function installOrUpdateWidget(id: string): Promise<{
     invalidateExternalWidgetsCache()
     deps?.onWidgetsInstalled()
 
+<<<<<<< HEAD
     const installed = await getInstalledWidgetVersions()
+=======
+    const installed = getInstalledWidgetVersions()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const updates = buildUpdateInfos(catalog, installed)
     setState({
       status: 'ready',
@@ -378,7 +436,11 @@ export async function updateWidgets(
 ): Promise<WidgetUpdatesState> {
   try {
     const catalog = await fetchCatalog()
+<<<<<<< HEAD
     const installed = await getInstalledWidgetVersions()
+=======
+    const installed = getInstalledWidgetVersions()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const infos = buildUpdateInfos(catalog, installed)
     const targets =
       ids?.length
@@ -397,6 +459,7 @@ export async function updateWidgets(
       return next
     }
 
+<<<<<<< HEAD
     setState({
       status: 'updating',
       updates: state.updates.length ? state.updates : infos,
@@ -407,6 +470,22 @@ export async function updateWidgets(
     const okCount = results.filter((r) => r.ok).length
 
     const refreshed = buildUpdateInfos(await fetchCatalog(), await getInstalledWidgetVersions())
+=======
+    let okCount = 0
+    for (let i = 0; i < targets.length; i++) {
+      const id = targets[i]
+      setState({
+        status: 'updating',
+        updates: state.updates.length ? state.updates : infos,
+        progress: Math.round((i / targets.length) * 100),
+        message: `Mise à jour ${i + 1}/${targets.length}…`,
+      })
+      const result = await installOrUpdateWidget(id)
+      if (result.ok) okCount++
+    }
+
+    const refreshed = buildUpdateInfos(await fetchCatalog(), getInstalledWidgetVersions())
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const next: WidgetUpdatesState = {
       status: okCount === targets.length ? 'ready' : 'error',
       updates: refreshed,
@@ -443,5 +522,9 @@ export async function updateWidgets(
 
 export async function listRemoteCatalogWidgets(): Promise<WidgetUpdateInfo[]> {
   const catalog = await fetchCatalog()
+<<<<<<< HEAD
   return buildUpdateInfos(catalog, await getInstalledWidgetVersions())
+=======
+  return buildUpdateInfos(catalog, getInstalledWidgetVersions())
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }

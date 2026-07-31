@@ -1,5 +1,8 @@
 import fs from 'node:fs'
+<<<<<<< HEAD
 import fsp from 'node:fs/promises'
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import path from 'node:path'
 import { app } from 'electron'
 
@@ -58,6 +61,7 @@ export function todayKey(d = new Date()): string {
   return `${y}-${m}-${day}`
 }
 
+<<<<<<< HEAD
 export async function listDayFilesInRange(from: string, to: string): Promise<string[]> {
   ensureDirs()
   const dir = daysDir()
@@ -68,6 +72,13 @@ export async function listDayFilesInRange(from: string, to: string): Promise<str
   }
   const keys = new Set<string>()
   for (const f of await fsp.readdir(dir)) {
+=======
+export function listDayFilesInRange(from: string, to: string): string[] {
+  ensureDirs()
+  if (!fs.existsSync(daysDir())) return []
+  const keys = new Set<string>()
+  for (const f of fs.readdirSync(daysDir())) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const jsonl = f.match(/^(\d{4}-\d{2}-\d{2})\.jsonl$/)
     if (jsonl) keys.add(jsonl[1])
     const watch = f.match(/^(\d{4}-\d{2}-\d{2})\.watch\.json$/)

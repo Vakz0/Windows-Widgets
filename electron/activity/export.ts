@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import fs from 'node:fs/promises'
+=======
+import fs from 'node:fs'
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import path from 'node:path'
 import { app, dialog } from 'electron'
 import type { ActivityExportFormat, ActivitySegment } from '../../shared/types'
@@ -33,11 +37,19 @@ export async function exportActivity(opts: {
   }
   const from = opts.from && isDayKey(opts.from) ? opts.from : todayKey()
   const to = opts.to && isDayKey(opts.to) ? opts.to : from
+<<<<<<< HEAD
   const dates = await listDayFilesInRange(from, to)
   const byDate = new Map<string, ActivitySegment[]>()
   const segments: ActivitySegment[] = []
   for (const d of dates) {
     const daySegs = await readDaySegments(d)
+=======
+  const dates = listDayFilesInRange(from, to)
+  const byDate = new Map<string, ActivitySegment[]>()
+  const segments: ActivitySegment[] = []
+  for (const d of dates) {
+    const daySegs = readDaySegments(d)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     byDate.set(d, daySegs)
     segments.push(...daySegs)
   }
@@ -47,11 +59,19 @@ export async function exportActivity(opts: {
     if (liveDay >= from && liveDay <= to) segments.push(live)
   }
 
+<<<<<<< HEAD
   const feedback = (await readFeedbackEntries()).filter((e) => {
     const day = e.at.slice(0, 10)
     return day >= from && day <= to
   })
   const focusJournal = await readFocusJournalInRange(from, to)
+=======
+  const feedback = readFeedbackEntries().filter((e) => {
+    const day = e.at.slice(0, 10)
+    return day >= from && day <= to
+  })
+  const focusJournal = readFocusJournalInRange(from, to)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
   const defaultName =
     opts.format === 'csv'
@@ -72,6 +92,7 @@ export async function exportActivity(opts: {
 
   try {
     if (opts.format === 'json') {
+<<<<<<< HEAD
       const baseDeps = hooks.summaryDeps()
       const feedbackByDay = new Map<string, number>()
       for (const e of feedback) {
@@ -82,6 +103,9 @@ export async function exportActivity(opts: {
         ...baseDeps,
         countFeedbackOnDay: (date: string) => feedbackByDay.get(date) ?? 0,
       }
+=======
+      const deps = hooks.summaryDeps()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       const payload = {
         from,
         to,
@@ -93,7 +117,11 @@ export async function exportActivity(opts: {
         summaries: dates.map((d) => buildSummary(d, byDate.get(d) ?? [], null, deps)),
         watchByDay: Object.fromEntries(dates.map((d) => [d, readWatchMap(d)])),
       }
+<<<<<<< HEAD
       await fs.writeFile(result.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+=======
+      fs.writeFileSync(result.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     } else {
       const header = [
         'start',
@@ -133,7 +161,11 @@ export async function exportActivity(opts: {
           s.categorySource ?? '',
           s.matchedPattern ?? '',
           s.confidence ?? '',
+<<<<<<< HEAD
           s.idleSec !== null && s.idleSec !== undefined ? String(s.idleSec) : '',
+=======
+          s.idleSec != null ? String(s.idleSec) : '',
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
           s.prevApp ?? '',
           s.sessionId ?? '',
           s.exeDir ?? '',
@@ -150,12 +182,22 @@ export async function exportActivity(opts: {
         ].join(',')
       })
       const watchHeader = 'date,domain,watchMs,kind'
+<<<<<<< HEAD
       const watchRows = dates.flatMap((d) =>
         Object.entries(readWatchMap(d)).map(([domain, ms]) =>
           [d, domain, String(ms), 'watch'].join(','),
         ),
       )
       await fs.writeFile(
+=======
+      const watchRows: string[] = []
+      for (const d of dates) {
+        for (const [domain, ms] of Object.entries(readWatchMap(d))) {
+          watchRows.push([d, domain, String(ms), 'watch'].join(','))
+        }
+      }
+      fs.writeFileSync(
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
         result.filePath,
         `${[header, ...rows].join('\n')}\n\n${[watchHeader, ...watchRows].join('\n')}\n`,
         'utf8',

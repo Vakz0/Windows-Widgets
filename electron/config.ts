@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import fsp from 'node:fs/promises'
+=======
+import fs from 'node:fs'
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import path from 'node:path'
 import { app } from 'electron'
 import type { AppConfig, WindowBounds, WidgetState, UpdatesConfig } from '../shared/types'
@@ -104,6 +108,7 @@ export function hasValidNotionCredentials(cfg: AppConfig): boolean {
   )
 }
 
+<<<<<<< HEAD
 async function fileExists(file: string): Promise<boolean> {
   try {
     await fsp.access(file)
@@ -138,13 +143,21 @@ async function mergeUserDataOverlays(
 }
 
 export async function loadConfig(): Promise<AppConfig> {
+=======
+export function loadConfig(): AppConfig {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const candidates = [cwdConfigPath(), projectConfigPath(), userConfigPath()]
   let fallback: AppConfig | null = null
 
   for (const file of candidates) {
     try {
+<<<<<<< HEAD
       if (!(await fileExists(file))) continue
       const text = (await fsp.readFile(file, 'utf8')).replace(/^\uFEFF/, '')
+=======
+      if (!fs.existsSync(file)) continue
+      const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '')
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       const raw = JSON.parse(text) as Partial<AppConfig>
       let cfg = applyWidgetsMigration(deepMerge(DEFAULT_CONFIG, raw), raw)
 
@@ -153,6 +166,7 @@ export async function loadConfig(): Promise<AppConfig> {
         continue
       }
 
+<<<<<<< HEAD
       cfg.demoMode = Boolean(raw.demoMode)
       // Keep window positions, widgets, and project sources from userData if present
       try {
@@ -165,6 +179,32 @@ export async function loadConfig(): Promise<AppConfig> {
       }
       // Persist the working config into userData for next launches
       await saveConfig(cfg)
+=======
+      cfg.demoMode = raw.demoMode === true ? true : false
+      // Keep window positions, widgets, and project sources from userData if present
+      try {
+        const userFile = userConfigPath()
+        if (file !== userFile && fs.existsSync(userFile)) {
+          const userText = fs.readFileSync(userFile, 'utf8').replace(/^\uFEFF/, '')
+          const userRaw = JSON.parse(userText) as Partial<AppConfig>
+          if (userRaw.windows) {
+            cfg.windows = { ...cfg.windows, ...userRaw.windows }
+          }
+          if (userRaw.widgets) {
+            cfg.widgets = { ...cfg.widgets, ...userRaw.widgets }
+          } else if (raw.widgets === undefined && userRaw.widgets === undefined) {
+            cfg = applyWidgetsMigration(cfg, {})
+          }
+          if (userRaw.projectSources?.length && !cfg.projectSources?.length) {
+            cfg.projectSources = userRaw.projectSources
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      // Persist the working config into userData for next launches
+      saveConfig(cfg)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       return cfg
     } catch (err) {
       console.error('Failed to read config', file, err)
@@ -176,6 +216,7 @@ export async function loadConfig(): Promise<AppConfig> {
   // Seed userData with example so the user can edit it easily
   try {
     const example = exampleConfigPath()
+<<<<<<< HEAD
     if (await fileExists(example)) {
       await fsp.copyFile(example, userConfigPath())
       const text = (await fsp.readFile(userConfigPath(), 'utf8')).replace(/^\uFEFF/, '')
@@ -187,6 +228,15 @@ export async function loadConfig(): Promise<AppConfig> {
       JSON.stringify(DEFAULT_CONFIG, null, 2),
       'utf8',
     )
+=======
+    if (fs.existsSync(example)) {
+      fs.copyFileSync(example, userConfigPath())
+      const text = fs.readFileSync(userConfigPath(), 'utf8').replace(/^\uFEFF/, '')
+      const raw = JSON.parse(text) as Partial<AppConfig>
+      return applyWidgetsMigration(deepMerge(DEFAULT_CONFIG, raw), raw)
+    }
+    fs.writeFileSync(userConfigPath(), JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf8')
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   } catch (err) {
     console.error('Failed to seed config', err)
   }
@@ -194,6 +244,7 @@ export async function loadConfig(): Promise<AppConfig> {
   return { ...DEFAULT_CONFIG, widgets: {}, windows: {} }
 }
 
+<<<<<<< HEAD
 export async function saveConfig(config: AppConfig): Promise<void> {
   const file = userConfigPath()
   await fsp.mkdir(path.dirname(file), { recursive: true })
@@ -205,6 +256,19 @@ export async function updateWindowBounds(
   kind: string,
   bounds: WindowBounds,
 ): Promise<AppConfig> {
+=======
+export function saveConfig(config: AppConfig): void {
+  const file = userConfigPath()
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, JSON.stringify(config, null, 2), 'utf8')
+}
+
+export function updateWindowBounds(
+  config: AppConfig,
+  kind: string,
+  bounds: WindowBounds,
+): AppConfig {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const next: AppConfig = {
     ...config,
     windows: {
@@ -212,6 +276,7 @@ export async function updateWindowBounds(
       [kind]: { ...config.windows?.[kind], ...bounds },
     },
   }
+<<<<<<< HEAD
   await saveConfig(next)
   return next
 }
@@ -221,6 +286,17 @@ export async function setWidgetEnabled(
   id: string,
   enabled: boolean,
 ): Promise<AppConfig> {
+=======
+  saveConfig(next)
+  return next
+}
+
+export function setWidgetEnabled(
+  config: AppConfig,
+  id: string,
+  enabled: boolean,
+): AppConfig {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const next: AppConfig = {
     ...config,
     widgets: {
@@ -228,12 +304,20 @@ export async function setWidgetEnabled(
       [id]: { enabled },
     },
   }
+<<<<<<< HEAD
   await saveConfig(next)
+=======
+  saveConfig(next)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return next
 }
 
 export function isWidgetEnabledInConfig(config: AppConfig, id: string): boolean {
+<<<<<<< HEAD
   return Boolean(config.widgets?.[id]?.enabled)
+=======
+  return config.widgets?.[id]?.enabled === true
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
 
 export function getConfigPath(): string {
@@ -242,15 +326,26 @@ export function getConfigPath(): string {
 
 export function getUpdatesConfig(config: AppConfig): UpdatesConfig {
   return {
+<<<<<<< HEAD
     autoDownload: Boolean(config.updates?.autoDownload),
+=======
+    autoDownload: config.updates?.autoDownload === true,
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     lastCheckedAt: config.updates?.lastCheckedAt,
   }
 }
 
+<<<<<<< HEAD
 export async function setUpdatesConfig(
   config: AppConfig,
   patch: Partial<UpdatesConfig>,
 ): Promise<AppConfig> {
+=======
+export function setUpdatesConfig(
+  config: AppConfig,
+  patch: Partial<UpdatesConfig>,
+): AppConfig {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   const next: AppConfig = {
     ...config,
     updates: {
@@ -259,7 +354,11 @@ export async function setUpdatesConfig(
       ...patch,
     },
   }
+<<<<<<< HEAD
   await saveConfig(next)
+=======
+  saveConfig(next)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return next
 }
 

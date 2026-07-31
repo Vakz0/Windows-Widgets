@@ -45,7 +45,11 @@ function wireEvents(): void {
 
   autoUpdater.on('update-available', (info) => {
     const version = info.version
+<<<<<<< HEAD
     const auto = Boolean(deps?.getAutoDownload())
+=======
+    const auto = deps?.getAutoDownload() === true
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     setState({
       status: auto ? 'downloading' : 'available',
       version,
@@ -117,7 +121,11 @@ export function getAppUpdateState(): AppUpdateState {
 export async function checkForAppUpdates(opts?: {
   silent?: boolean
 }): Promise<AppUpdateState> {
+<<<<<<< HEAD
   const silent = Boolean(opts?.silent)
+=======
+  const silent = opts?.silent === true
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
   if (!app.isPackaged) {
     const next: AppUpdateState = {
@@ -129,7 +137,11 @@ export async function checkForAppUpdates(opts?: {
     return next
   }
 
+<<<<<<< HEAD
   applyAutoDownload(Boolean(deps?.getAutoDownload()))
+=======
+  applyAutoDownload(deps?.getAutoDownload() === true)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   wireEvents()
   deps?.markChecked()
 

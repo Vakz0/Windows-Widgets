@@ -13,11 +13,15 @@ import {
   fetchBrowserUrl,
   parseIdeOrChatTitle,
 } from '../activityContext'
+<<<<<<< HEAD
 import {
   ensureFocusSessionLoaded,
   evaluateFocusGuard,
   getFocusAttribution,
 } from '../focusSession'
+=======
+import { evaluateFocusGuard, getFocusAttribution } from '../focusSession'
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import { isMediaKeepAwakeActive } from '../activityMediaBridge'
 import { classify, isIgnoredApp, type ClassifyResult } from './classifier'
 import { DEFAULT_RULES, FLUSH_EVERY_POLLS, FOCUS_DWELL_MS } from './defaults'
@@ -72,7 +76,11 @@ export function clearPendingAndSession(): void {
 }
 
 function shortTitleHash(title: string): string {
+<<<<<<< HEAD
   return createHash('sha256').update(title).digest('hex').slice(0, 12)
+=======
+  return createHash('sha1').update(title).digest('hex').slice(0, 12)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
 
 export function liveOpenSegment(): ActivitySegment | null {
@@ -81,10 +89,17 @@ export function liveOpenSegment(): ActivitySegment | null {
   return { ...openSegment, end: new Date().toISOString() }
 }
 
+<<<<<<< HEAD
 export async function closeOpenSegment(end = new Date()): Promise<void> {
   if (!openSegment) return
   openSegment.end = end.toISOString()
   if (shouldPersistSegment(openSegment)) await appendSegment(openSegment)
+=======
+export function closeOpenSegment(end = new Date()): void {
+  if (!openSegment) return
+  openSegment.end = end.toISOString()
+  if (shouldPersistSegment(openSegment)) appendSegment(openSegment)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!openSegment.ignored) lastApp = openSegment.app
   openSegment = null
   pollsSinceFlush = 0
@@ -148,6 +163,7 @@ function makeSegment(opts: {
   })
 }
 
+<<<<<<< HEAD
 type PollSample = {
   idle: boolean
   app: string
@@ -270,11 +286,14 @@ async function resolvePollSample(now: Date): Promise<PollSample> {
   return { idle, app, title: next.title, domain, projectName, ignored, next }
 }
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export async function pollOnce(): Promise<void> {
   const settings = getSettings()
   if (!running || settings.paused || pollInFlight) return
   pollInFlight = true
   try {
+<<<<<<< HEAD
     await ensureFocusSessionLoaded()
     const now = new Date()
     const nowMs = now.getTime()
@@ -282,6 +301,116 @@ export async function pollOnce(): Promise<void> {
     const { idle, app, domain, projectName, ignored, next } = sample
 
     const guard = await evaluateFocusGuard({
+=======
+    const now = new Date()
+    const nowMs = now.getTime()
+    let idleSec = 0
+    try {
+      idleSec = powerMonitor.getSystemIdleTime()
+    } catch {
+      idleSec = 0
+    }
+    // Extension media bridge: active playback suppresses AFK despite system idle.
+    const systemIdle = idleSec >= settings.idleThresholdSec
+    const idle = systemIdle && !isMediaKeepAwakeActive()
+
+    let app = 'unknown'
+    let rawTitle = ''
+    let exeDir: string | null = null
+    let ignored = false
+    const rules = getRules()
+    if (!idle) {
+      const fg = getForeground()
+      if (fg) {
+        app = normalizeAppKey(fg.app)
+        rawTitle = fg.title || ''
+        exeDir = fg.exeDir
+        ignored =
+          fg.isLatticeWindow ||
+          isIgnoredApp(app, rules, DEFAULT_RULES.ignoredApps ?? [])
+      }
+    } else {
+      app = 'afk'
+      pendingSwitch = null
+    }
+
+    const title = settings.storeTitles && !idle ? rawTitle || null : null
+    const titleHash =
+      !settings.storeTitles && rawTitle && !idle ? shortTitleHash(rawTitle) : null
+
+    let domain: string | null = null
+    let urlPath: string | null = null
+    let contextKind: ActivityContextKind | null = null
+    let fileName: string | null = null
+    let projectName: string | null = null
+
+    if (!idle && !ignored) {
+      if (BROWSER_APPS.has(app) && settings.browserDetail !== 'off') {
+        const browser = await fetchBrowserUrl(app, settings.browserDetail)
+        domain = browser.domain
+        urlPath = browser.urlPath
+        if (!domain) {
+          const fromTitle = domainFromBrowserTitle(rawTitle || null, settings.browserDetail)
+          domain = fromTitle.domain
+          urlPath = fromTitle.urlPath
+        }
+        contextKind = 'browser'
+      } else {
+        const parsed = parseIdeOrChatTitle(app, rawTitle || null, settings.parseIdeTitles)
+        contextKind = parsed.contextKind
+        fileName = parsed.fileName
+        projectName = parsed.projectName
+      }
+    }
+
+    const classified = ignored
+      ? {
+          category: 'system' as ActivityCategory,
+          source: 'app' as ActivityCategorySource,
+          matchedPattern: 'ignored',
+          confidence: 'high' as ActivityConfidence,
+        }
+      : classify(
+          app,
+          settings.storeTitles ? title : rawTitle || null,
+          idle,
+          domain,
+          rules,
+          getCompiledTitlePatterns(),
+        )
+
+    if (idle) {
+      currentSessionId = null
+    } else if (!ignored && !currentSessionId) {
+      currentSessionId = randomUUID()
+    }
+
+    const prevForNext =
+      lastApp && lastApp !== app
+        ? lastApp
+        : openSegment && openSegment.app !== app
+          ? openSegment.app
+          : null
+    const next = makeSegment({
+      now,
+      app,
+      title: ignored ? (settings.storeTitles ? 'Lattice' : null) : title,
+      titleHash,
+      exeDir,
+      idleSec,
+      classified,
+      prevApp: prevForNext ?? openSegment?.prevApp ?? null,
+      sessionId: idle || ignored ? null : currentSessionId,
+      domain,
+      urlPath,
+      contextKind: ignored ? null : contextKind,
+      fileName: ignored ? null : fileName,
+      projectName: ignored ? null : projectName,
+      ignored,
+    })
+
+    const guard = evaluateFocusGuard({
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       nowMs,
       app,
       title: next.title,
@@ -293,7 +422,11 @@ export async function pollOnce(): Promise<void> {
     })
     if (guard.interrupted) {
       pendingSwitch = null
+<<<<<<< HEAD
       await closeOpenSegment(now)
+=======
+      closeOpenSegment(now)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       openSegment = applyFocusAttribution({
         ...next,
         start: now.toISOString(),
@@ -322,7 +455,11 @@ export async function pollOnce(): Promise<void> {
         (openSegment.notionTaskId ?? null) !== (retagged.notionTaskId ?? null) ||
         (openSegment.focusSessionId ?? null) !== (retagged.focusSessionId ?? null)
       if (attrChanged) {
+<<<<<<< HEAD
         await closeOpenSegment(now)
+=======
+        closeOpenSegment(now)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
         openSegment = {
           ...retagged,
           start: now.toISOString(),
@@ -336,7 +473,11 @@ export async function pollOnce(): Promise<void> {
       pollsSinceFlush += 1
       if (pollsSinceFlush >= FLUSH_EVERY_POLLS) {
         const snap = { ...openSegment }
+<<<<<<< HEAD
         if (shouldPersistSegment(snap)) await appendSegment(snap)
+=======
+        if (shouldPersistSegment(snap)) appendSegment(snap)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
         openSegment = {
           ...openSegment,
           start: now.toISOString(),
@@ -351,7 +492,11 @@ export async function pollOnce(): Promise<void> {
     // Immediate switch for AFK transitions (enter/leave idle).
     if (idle || openSegment.category === 'afk') {
       pendingSwitch = null
+<<<<<<< HEAD
       await closeOpenSegment(now)
+=======
+      closeOpenSegment(now)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
       openSegment = {
         ...next,
         prevApp: lastApp && lastApp !== next.app ? lastApp : null,
@@ -363,7 +508,11 @@ export async function pollOnce(): Promise<void> {
     if (pendingSwitch && sameFocus(pendingSwitch.segment, next)) {
       pendingSwitch.segment = { ...next, start: pendingSwitch.segment.start }
       if (nowMs - pendingSwitch.sinceMs >= FOCUS_DWELL_MS) {
+<<<<<<< HEAD
         await closeOpenSegment(now)
+=======
+        closeOpenSegment(now)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
         openSegment = {
           ...pendingSwitch.segment,
           start: now.toISOString(),

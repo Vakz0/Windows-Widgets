@@ -1,7 +1,11 @@
 type LineWidth = 'wide' | 'medium' | 'narrow'
 
 /** Une ligne de texte fantôme, largeur au choix. */
+<<<<<<< HEAD
 function SkeletonLine({ width = 'wide' }: { width?: LineWidth }) {
+=======
+export function SkeletonLine({ width = 'wide' }: { width?: LineWidth }) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return <span className={`skeleton skeleton-line is-${width}`} />
 }
 
@@ -43,3 +47,16 @@ export function SkeletonCard({
     </Tag>
   )
 }
+<<<<<<< HEAD
+=======
+
+/** Libellé de bouton avec petit spinner inline, pour une action en cours. */
+export function ButtonSpinner({ label }: { label: string }) {
+  return (
+    <span className="btn-spinner-row">
+      <span className="spinner" />
+      {label}
+    </span>
+  )
+}
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644

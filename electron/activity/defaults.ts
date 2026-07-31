@@ -4,9 +4,12 @@ export const POLL_MS = 2_000
 export const FLUSH_EVERY_POLLS = 15
 /** Focus must stay stable this long before we commit an app switch. */
 export const FOCUS_DWELL_MS = 3_000
+<<<<<<< HEAD
 /** Allowed range for focusOffProjectDwellSec setting. */
 export const FOCUS_OFF_PROJECT_DWELL_MIN_SEC = 3
 export const FOCUS_OFF_PROJECT_DWELL_MAX_SEC = 120
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
 export const CATEGORIES: ActivityCategory[] = [
   'work',
@@ -61,6 +64,7 @@ export const DEFAULT_RULES: ActivityRules = {
     taskmgr: 'system',
   },
   titlePatterns: [
+<<<<<<< HEAD
     { pattern: 'youtube', category: 'entertainment' },
     { pattern: 'netflix', category: 'entertainment' },
     { pattern: 'twitch', category: 'entertainment' },
@@ -88,6 +92,15 @@ export const DEFAULT_RULES: ActivityRules = {
     { pattern: 'teams', category: 'communication' },
     { pattern: 'slack', category: 'communication' },
     { pattern: 'discord', category: 'communication' },
+=======
+    { pattern: 'youtube|netflix|twitch|disney\\+|prime video|spotify', category: 'entertainment' },
+    { pattern: 'facebook|instagram|tiktok|reddit|twitter|x\\.com', category: 'entertainment' },
+    {
+      pattern: 'github|gitlab|stackoverflow|notion|localhost|docs\\.google|jira|linear\\.app|figma',
+      category: 'work',
+    },
+    { pattern: 'outlook|gmail|mail\\.google|teams|slack|discord', category: 'communication' },
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   ],
   userAppOverrides: {},
   ignoredApps: ['lattice', 'lattice-desk'],

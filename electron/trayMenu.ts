@@ -46,10 +46,16 @@ export function createTrayMenuController(
     const tray = getTray()
     if (!tray) return
     deps.updateTrayTooltip()
+<<<<<<< HEAD
     void build().then((menu) => {
       if (lastPos) tray.popUpContextMenu(menu, lastPos)
       else tray.popUpContextMenu(menu)
     })
+=======
+    const menu = build()
+    if (lastPos) tray.popUpContextMenu(menu, lastPos)
+    else tray.popUpContextMenu(menu)
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   }
 
   /** Après une case à cocher, Windows ferme le menu : on le rouvre au même endroit */
@@ -57,13 +63,21 @@ export function createTrayMenuController(
     setTimeout(() => popup(), 20)
   }
 
+<<<<<<< HEAD
   async function build() {
+=======
+  function build() {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const config = deps.getConfig()
     const desktop = deps.getEnabledDesktopWidgets()
     const monitorEnabled = deps.isMonitorEnabled()
     const notionEnabled = deps.hasNotionWidgets()
     const tempDaemon = deps.hasTempDaemon()
+<<<<<<< HEAD
     const tempRunning = await isTempServiceRunning()
+=======
+    const tempRunning = isTempServiceRunning()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 
     const template: Electron.MenuItemConstructorOptions[] = [
       {
@@ -120,7 +134,11 @@ export function createTrayMenuController(
         click: () => {
           void (async () => {
             if (tempRunning) {
+<<<<<<< HEAD
               const result = await stopTempDaemon()
+=======
+              const result = stopTempDaemon()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
               const stats = deps.getStats()
               if (stats) {
                 const next = { ...stats, temperatureC: null, tempSource: null }
@@ -163,7 +181,11 @@ export function createTrayMenuController(
         checked: config.launchAtStartup,
         click: (item) => {
           deps.setLaunchAtStartup(item.checked)
+<<<<<<< HEAD
           void saveConfig(deps.getConfig())
+=======
+          saveConfig(deps.getConfig())
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
           deps.applyLaunchAtStartup()
           keepOpen()
         },

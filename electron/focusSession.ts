@@ -3,7 +3,10 @@
  * State under userData/activity/ (focus-session.json, focus-journal.jsonl).
  */
 import fs from 'node:fs'
+<<<<<<< HEAD
 import fsp from 'node:fs/promises'
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 import { randomUUID } from 'node:crypto'
 import type {
   FocusAllowlist,
@@ -79,7 +82,11 @@ function domainMatches(allowed: string[], domain: string | null): boolean {
   return allowed.some((a) => d === a || d.endsWith(`.${a}`))
 }
 
+<<<<<<< HEAD
 function isOnFocusAllowlist(
+=======
+export function isOnFocusAllowlist(
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   allowlist: FocusAllowlist,
   sample: { app: string; domain: string | null; projectName: string | null },
 ): boolean {
@@ -96,6 +103,7 @@ function emitChanged(): void {
   onChanged?.(session ? structuredClone(session) : null)
 }
 
+<<<<<<< HEAD
 async function persistSession(): Promise<void> {
   ensureDirs()
   const file = focusSessionPath()
@@ -126,6 +134,29 @@ async function loadPersistedSession(): Promise<void> {
       return
     }
     const raw = JSON.parse(await fsp.readFile(file, 'utf8')) as Partial<FocusSession>
+=======
+function persistSession(): void {
+  ensureDirs()
+  if (!session) {
+    if (fs.existsSync(focusSessionPath())) {
+      try {
+        fs.unlinkSync(focusSessionPath())
+      } catch {
+        /* ignore */
+      }
+    }
+    return
+  }
+  fs.writeFileSync(focusSessionPath(), `${JSON.stringify(session, null, 2)}\n`, 'utf8')
+}
+
+function loadPersistedSession(): void {
+  if (stateLoaded) return
+  stateLoaded = true
+  try {
+    if (!fs.existsSync(focusSessionPath())) return
+    const raw = JSON.parse(fs.readFileSync(focusSessionPath(), 'utf8')) as Partial<FocusSession>
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     if (!raw?.id || !raw.notionTaskId || !raw.startedAt) return
     session = {
       id: String(raw.id),
@@ -139,19 +170,28 @@ async function loadPersistedSession(): Promise<void> {
     // Don't auto-reopen an interrupt modal after restart — resume as paused if interrupted.
     if (session.status === 'interrupted') {
       session.status = 'paused'
+<<<<<<< HEAD
       await persistSession()
     }
   } catch (err) {
     console.debug('loadPersistedSession: ignored', err)
+=======
+      persistSession()
+    }
+  } catch {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     session = null
   }
 }
 
+<<<<<<< HEAD
 /** Ensure persisted focus state is loaded (idempotent). */
 export async function ensureFocusSessionLoaded(): Promise<void> {
   await loadPersistedSession()
 }
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 export function setFocusSessionListeners(opts: {
   onChanged?: FocusChangedListener | null
   onInterrupt?: FocusInterruptListener | null
@@ -160,8 +200,13 @@ export function setFocusSessionListeners(opts: {
   if ('onInterrupt' in opts) onInterrupt = opts.onInterrupt ?? null
 }
 
+<<<<<<< HEAD
 /** In-memory snapshot (no I/O). Call ensureFocusSessionLoaded() first when needed. */
 export function getFocusSession(): FocusSession | null {
+=======
+export function getFocusSession(): FocusSession | null {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   return session ? structuredClone(session) : null
 }
 
@@ -175,6 +220,10 @@ export function getFocusAttribution(): {
   notionTaskId: string
   notionTaskTitle: string
 } | null {
+<<<<<<< HEAD
+=======
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session || session.status !== 'active') return null
   return {
     focusSessionId: session.id,
@@ -183,12 +232,21 @@ export function getFocusAttribution(): {
   }
 }
 
+<<<<<<< HEAD
 export async function startFocusSession(payload: StartFocusSessionPayload): Promise<{
   ok: boolean
   session?: FocusSession
   message?: string
 }> {
   await loadPersistedSession()
+=======
+export function startFocusSession(payload: StartFocusSessionPayload): {
+  ok: boolean
+  session?: FocusSession
+  message?: string
+} {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!payload?.notionTaskId || !payload.notionTaskTitle) {
     return { ok: false, message: 'Tâche Notion invalide.' }
   }
@@ -203,45 +261,81 @@ export async function startFocusSession(payload: StartFocusSessionPayload): Prom
     status: 'active',
     allowlist: defaultAllowlist(payload.seedAllowlist),
   }
+<<<<<<< HEAD
   await persistSession()
+=======
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   return { ok: true, session: structuredClone(session) }
 }
 
+<<<<<<< HEAD
 export async function stopFocusSession(): Promise<FocusSession | null> {
   await loadPersistedSession()
   session = null
   pendingInterrupt = null
   offProjectSinceMs = null
   await persistSession()
+=======
+export function stopFocusSession(): FocusSession | null {
+  loadPersistedSession()
+  session = null
+  pendingInterrupt = null
+  offProjectSinceMs = null
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   return null
 }
 
+<<<<<<< HEAD
 export async function pauseFocusSession(): Promise<FocusSession | null> {
   await loadPersistedSession()
+=======
+export function pauseFocusSession(): FocusSession | null {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session) return null
   session = { ...session, status: 'paused' }
   pendingInterrupt = null
   offProjectSinceMs = null
+<<<<<<< HEAD
   await persistSession()
+=======
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   return structuredClone(session)
 }
 
+<<<<<<< HEAD
 export async function resumeFocusSession(): Promise<FocusSession | null> {
   await loadPersistedSession()
+=======
+export function resumeFocusSession(): FocusSession | null {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session) return null
   session = { ...session, status: 'active' }
   pendingInterrupt = null
   offProjectSinceMs = null
+<<<<<<< HEAD
   await persistSession()
+=======
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   return structuredClone(session)
 }
 
+<<<<<<< HEAD
 export async function updateFocusAllowlist(patch: Partial<FocusAllowlist>): Promise<FocusSession | null> {
   await loadPersistedSession()
+=======
+export function updateFocusAllowlist(patch: Partial<FocusAllowlist>): FocusSession | null {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session) return null
   session = {
     ...session,
@@ -251,11 +345,16 @@ export async function updateFocusAllowlist(patch: Partial<FocusAllowlist>): Prom
       ideProjects: patch.ideProjects ?? session.allowlist.ideProjects,
     }),
   }
+<<<<<<< HEAD
   await persistSession()
+=======
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   return structuredClone(session)
 }
 
+<<<<<<< HEAD
 async function appendJournal(entry: FocusJournalEntry): Promise<void> {
   ensureDirs()
   await fsp.appendFile(focusJournalPath(), `${JSON.stringify(entry)}\n`, 'utf8')
@@ -271,18 +370,37 @@ export async function getFocusJournal(date?: string): Promise<FocusJournalEntry[
   }
   const out: FocusJournalEntry[] = []
   for (const line of (await fsp.readFile(file, 'utf8')).split(/\r?\n/)) {
+=======
+function appendJournal(entry: FocusJournalEntry): void {
+  ensureDirs()
+  fs.appendFileSync(focusJournalPath(), `${JSON.stringify(entry)}\n`, 'utf8')
+}
+
+export function getFocusJournal(date?: string): FocusJournalEntry[] {
+  const key = date && isDayKey(date) ? date : todayKey()
+
+  if (!fs.existsSync(focusJournalPath())) return []
+  const out: FocusJournalEntry[] = []
+  for (const line of fs.readFileSync(focusJournalPath(), 'utf8').split(/\r?\n/)) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
       const entry = JSON.parse(trimmed) as FocusJournalEntry
       if (entry.ts?.slice(0, 10) === key) out.push(entry)
+<<<<<<< HEAD
     } catch (err) {
       console.debug('getFocusJournal: skip bad line', err)
+=======
+    } catch {
+      /* skip */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   return out
 }
 
+<<<<<<< HEAD
 export async function readFocusJournalInRange(from: string, to: string): Promise<FocusJournalEntry[]> {
   const file = focusJournalPath()
   try {
@@ -292,19 +410,31 @@ export async function readFocusJournalInRange(from: string, to: string): Promise
   }
   const out: FocusJournalEntry[] = []
   for (const line of (await fsp.readFile(file, 'utf8')).split(/\r?\n/)) {
+=======
+export function readFocusJournalInRange(from: string, to: string): FocusJournalEntry[] {
+  if (!fs.existsSync(focusJournalPath())) return []
+  const out: FocusJournalEntry[] = []
+  for (const line of fs.readFileSync(focusJournalPath(), 'utf8').split(/\r?\n/)) {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     const trimmed = line.trim()
     if (!trimmed) continue
     try {
       const entry = JSON.parse(trimmed) as FocusJournalEntry
       const day = entry.ts?.slice(0, 10)
       if (day && day >= from && day <= to) out.push(entry)
+<<<<<<< HEAD
     } catch (err) {
       console.debug('readFocusJournalInRange: skip bad line', err)
+=======
+    } catch {
+      /* skip */
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     }
   }
   return out
 }
 
+<<<<<<< HEAD
 export async function clearFocusJournalFile(): Promise<void> {
   const file = focusJournalPath()
   try {
@@ -320,11 +450,28 @@ export async function clearFocusJournalFile(): Promise<void> {
 }
 
 async function beginInterrupt(sample: {
+=======
+export function clearFocusJournalFile(): void {
+  if (fs.existsSync(focusJournalPath())) {
+    try {
+      fs.unlinkSync(focusJournalPath())
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function beginInterrupt(sample: {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   app: string
   title: string | null
   domain: string | null
   projectName: string | null
+<<<<<<< HEAD
 }): Promise<boolean> {
+=======
+}): boolean {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session || session.status !== 'active' || pendingInterrupt) return false
   pendingInterrupt = {
     app: sample.app,
@@ -337,12 +484,17 @@ async function beginInterrupt(sample: {
   }
   session = { ...session, status: 'interrupted' }
   offProjectSinceMs = null
+<<<<<<< HEAD
   await persistSession()
+=======
+  persistSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   emitChanged()
   onInterrupt?.(structuredClone(pendingInterrupt))
   return true
 }
 
+<<<<<<< HEAD
 /** Pure check: dwell elapsed off-allowlist while session is actively guarded. */
 function shouldBeginInterrupt(
   activeSession: FocusSession,
@@ -383,11 +535,17 @@ function shouldBeginInterrupt(
   return { begin: true, nextOffSince: offSince }
 }
 
+=======
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 /**
  * Called from the activity poll with the current stable focus sample.
  * Returns true when an interrupt was just triggered (caller should close on-task segment).
  */
+<<<<<<< HEAD
 export async function evaluateFocusGuard(sample: {
+=======
+export function evaluateFocusGuard(sample: {
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   nowMs: number
   app: string
   title: string | null
@@ -396,6 +554,7 @@ export async function evaluateFocusGuard(sample: {
   ignored: boolean
   idle: boolean
   dwellSec: number
+<<<<<<< HEAD
 }): Promise<{ interrupted: boolean }> {
   await loadPersistedSession()
   if (!session) {
@@ -453,6 +612,47 @@ export async function resolveFocusInterrupt(payload: ResolveFocusInterruptPayloa
   message?: string
 }> {
   await loadPersistedSession()
+=======
+}): { interrupted: boolean } {
+  loadPersistedSession()
+  if (!session || session.status !== 'active') {
+    offProjectSinceMs = null
+    return { interrupted: false }
+  }
+  if (sample.idle || sample.ignored || sample.app === 'afk') {
+    offProjectSinceMs = null
+    return { interrupted: false }
+  }
+  if (
+    isOnFocusAllowlist(session.allowlist, {
+      app: sample.app,
+      domain: sample.domain,
+      projectName: sample.projectName,
+    })
+  ) {
+    offProjectSinceMs = null
+    return { interrupted: false }
+  }
+
+  const dwellMs = Math.max(3, sample.dwellSec) * 1000
+  if (offProjectSinceMs == null) {
+    offProjectSinceMs = sample.nowMs
+    return { interrupted: false }
+  }
+  if (sample.nowMs - offProjectSinceMs < dwellMs) {
+    return { interrupted: false }
+  }
+  const triggered = beginInterrupt(sample)
+  return { interrupted: triggered }
+}
+
+export function resolveFocusInterrupt(payload: ResolveFocusInterruptPayload): {
+  ok: boolean
+  session: FocusSession | null
+  message?: string
+} {
+  loadPersistedSession()
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
   if (!session) {
     return { ok: false, session: null, message: 'Aucune session focus.' }
   }
@@ -478,7 +678,11 @@ export async function resolveFocusInterrupt(payload: ResolveFocusInterruptPayloa
     sessionId: session.id,
   }
 
+<<<<<<< HEAD
   await appendJournal({
+=======
+  appendJournal({
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
     ts: new Date().toISOString(),
     sessionId: session.id,
     notionTaskId: session.notionTaskId,
@@ -493,8 +697,54 @@ export async function resolveFocusInterrupt(payload: ResolveFocusInterruptPayloa
   pendingInterrupt = null
   offProjectSinceMs = null
 
+<<<<<<< HEAD
   session = applyInterruptAction(session, action, ctx)
   await persistSession()
   emitChanged()
   return { ok: true, session: session ? structuredClone(session) : null }
+=======
+  if (action === 'stop') {
+    session = null
+    persistSession()
+    emitChanged()
+    return { ok: true, session: null }
+  }
+
+  if (action === 'pause') {
+    session = { ...session, status: 'paused' }
+    persistSession()
+    emitChanged()
+    return { ok: true, session: structuredClone(session) }
+  }
+
+  if (action === 'allow_once') {
+    const apps = [...session.allowlist.apps]
+    const domains = [...session.allowlist.domains]
+    const ideProjects = [...session.allowlist.ideProjects]
+    const appKey = normalizeAppKey(ctx.app)
+    if (appKey && appKey !== 'unknown' && !apps.includes(appKey)) apps.push(appKey)
+    if (ctx.domain) {
+      const d = normalizeDomain(ctx.domain)
+      if (d && !domains.includes(d)) domains.push(d)
+    }
+    if (ctx.projectName) {
+      const p = normalizeProject(ctx.projectName)
+      if (p && !ideProjects.includes(p)) ideProjects.push(p)
+    }
+    session = {
+      ...session,
+      status: 'active',
+      allowlist: { apps, domains, ideProjects },
+    }
+    persistSession()
+    emitChanged()
+    return { ok: true, session: structuredClone(session) }
+  }
+
+  // resume
+  session = { ...session, status: 'active' }
+  persistSession()
+  emitChanged()
+  return { ok: true, session: structuredClone(session) }
+>>>>>>> 7d386cf717032111f3e978fa0871fa887d84b644
 }
