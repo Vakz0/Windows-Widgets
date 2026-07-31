@@ -35,9 +35,20 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     defaultBounds: { width: 360, height: 300 },
     windowOptions: { resizable: false, alwaysOnTop: true },
   },
+  {
+    id: 'activity',
+    label: 'Activité',
+    description:
+      'Temps passé par app et catégorie (travail, divertissement…). Historique local, export CSV/JSON.',
+    source: 'builtin',
+    placement: 'desktop',
+    services: ['activity-tracker'],
+    defaultBounds: { width: 380, height: 520 },
+    windowOptions: { resizable: true, alwaysOnTop: false },
+  },
 ]
 
-/** Définitions builtin + externes découvertes (stub pour l’instant). */
+/** Définitions builtin + packages externes découverts sous userData/widgets. */
 export function getAllWidgetDefinitions(): WidgetDefinition[] {
   return [...BUILTIN_WIDGETS, ...discoverExternalWidgets()]
 }

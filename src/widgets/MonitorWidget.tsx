@@ -20,22 +20,27 @@ function RingGauge({
   percent,
   tone,
   sub,
+  loading,
 }: {
   label: string
   valueLabel: string
   percent: number
   tone: 'ok' | 'warn' | 'hot' | 'muted'
   sub?: string
+  loading?: boolean
 }) {
   const size = 88
   const stroke = 7
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
-  const clamped = Math.min(100, Math.max(0, percent))
+  // Tant que les stats n'ont jamais été reçues, l'anneau reste plein et pulse
+  // au lieu d'afficher une fausse valeur à 0 %.
+  const displayPercent = loading ? 100 : percent
+  const clamped = Math.min(100, Math.max(0, displayPercent))
   const offset = circumference - (clamped / 100) * circumference
 
   return (
-    <div className={`monitor-gauge tone-${tone}`}>
+    <div className={`monitor-gauge tone-${loading ? 'loading' : tone}`}>
       <div className="monitor-ring-wrap">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
           <circle
@@ -60,7 +65,9 @@ function RingGauge({
           />
         </svg>
         <div className="monitor-ring-center">
-          <span className="monitor-ring-number">{valueLabel}</span>
+          <span className={`monitor-ring-number${loading ? ' is-loading' : ''}`}>
+            {loading ? '···' : valueLabel}
+          </span>
         </div>
       </div>
       <div className="monitor-gauge-label">{label}</div>
@@ -89,9 +96,15 @@ export function MonitorWidget() {
 
   useEffect(() => {
     let alive = true
-    void window.lattice.getStats().then((s) => {
-      if (alive) setStats(s)
-    })
+    void window.lattice
+      .getStats()
+      .then((s) => {
+        if (alive) setStats(s)
+      })
+      .catch((err) => {
+        // On réessaiera via onStatsUpdated ; les anneaux restent en attente.
+        console.error('Failed to load system stats', err)
+      })
     const off = window.lattice.onStatsUpdated((s) => setStats(s))
     return () => {
       alive = false
@@ -99,6 +112,7 @@ export function MonitorWidget() {
     }
   }, [])
 
+  const initialLoading = stats == null
   const cpu = stats?.cpuPercent ?? 0
   const ram = stats?.ramPercent ?? 0
   const temp = stats?.temperatureC ?? null
@@ -134,12 +148,14 @@ export function MonitorWidget() {
           valueLabel={`${cpu}%`}
           percent={cpu}
           tone={toneForPercent(cpu)}
+          loading={initialLoading}
         />
         <RingGauge
           label="Mémoire"
           valueLabel={`${ram}%`}
           percent={ram}
           tone={toneForPercent(ram)}
+          loading={initialLoading}
           sub={
             stats
               ? `${stats.ramUsedGb.toFixed(1)} / ${stats.ramTotalGb.toFixed(0)} Go`
@@ -151,6 +167,7 @@ export function MonitorWidget() {
           valueLabel={temp != null ? `${temp}°` : '—'}
           percent={tempPercent}
           tone={toneForTemp(temp)}
+          loading={initialLoading}
           sub={stats?.tempSource ? stats.tempSource : tempMissing ? 'Non disponible' : undefined}
         />
       </div>

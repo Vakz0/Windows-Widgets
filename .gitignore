@@ -5,6 +5,9 @@ release/
 tools/cpu-temp/bin/
 tools/cpu-temp/obj/
 tools/cpu-temp/publish/
+tools/active-url/bin/
+tools/active-url/obj/
+tools/active-url/publish/
 *.log
 *.sys
 .env

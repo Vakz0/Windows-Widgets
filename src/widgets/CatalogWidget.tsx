@@ -1,11 +1,15 @@
 import { useEffect, useState, useTransition } from 'react'
 import type {
+  AppUpdateState,
   CatalogWidgetInfo,
   PublicConfig,
   TaskPropertyMapping,
   TaskSourceFilters,
+  WidgetUpdateInfo,
+  WidgetUpdatesState,
 } from '../../shared/types'
 import type { CatalogView } from '../vite-env'
+import { ButtonSpinner, SkeletonCard, SkeletonLines } from './Skeleton'
 
 function initialView(): CatalogView {
   const params = new URLSearchParams(window.location.search)
@@ -141,6 +145,7 @@ function SettingsPanel({
     refreshIntervalSeconds?: number
     demoMode?: boolean
     launchAtStartup?: boolean
+    updates?: { autoDownload?: boolean }
   }) => Promise<void>
   onConfigChange: (cfg: PublicConfig) => void
   onMessage: (message: string | null) => void
@@ -161,10 +166,16 @@ function SettingsPanel({
     completedStatusValues: [],
   })
   const [completedDraft, setCompletedDraft] = useState('')
-  const [notionBusy, setNotionBusy] = useState(false)
+  const [notionAction, setNotionAction] = useState<'test' | 'save' | null>(null)
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [testOk, setTestOk] = useState(false)
   const [dbTitle, setDbTitle] = useState<string | null>(null)
+  const [appUpdate, setAppUpdate] = useState<AppUpdateState>({ status: 'idle' })
+  const [widgetUpdate, setWidgetUpdate] = useState<WidgetUpdatesState>({
+    status: 'idle',
+    updates: [],
+  })
+  const [updateBusy, setUpdateBusy] = useState<'app' | 'widgets' | null>(null)
 
   useEffect(() => {
     if (!config) return
@@ -179,14 +190,89 @@ function SettingsPanel({
     setTokenDraft('')
   }, [config])
 
+  useEffect(() => {
+    void window.lattice.getAppUpdateStatus().then(setAppUpdate)
+    void window.lattice.getWidgetUpdateStatus().then(setWidgetUpdate)
+    const unsubApp = window.lattice.onAppUpdateStatus(setAppUpdate)
+    const unsubWidgets = window.lattice.onWidgetUpdateStatus(setWidgetUpdate)
+    return () => {
+      unsubApp()
+      unsubWidgets()
+    }
+  }, [])
+
   if (!config) {
-    return <p className="catalog-empty">Chargement des paramètres…</p>
+    return (
+      <div className="catalog-settings" aria-hidden>
+        {Array.from({ length: 2 }, (_, i) => (
+          <section className="catalog-settings-card" key={`skeleton-${i}`}>
+            <SkeletonLines widths={['narrow', 'wide', 'medium']} />
+          </section>
+        ))}
+      </div>
+    )
   }
 
-  const busy = saving || notionBusy
+  const busy = saving || notionAction != null || updateBusy != null
+  const widgetUpdatesAvailable = widgetUpdate.updates.filter(
+    (u) => u.status === 'update-available',
+  ).length
+
+  async function runUpdateAction(
+    kind: 'app' | 'widgets',
+    action: () => Promise<{ message?: string } | unknown>,
+  ) {
+    setUpdateBusy(kind)
+    onMessage(null)
+    try {
+      const next = await action()
+      if (next && typeof next === 'object' && 'message' in next) {
+        onMessage((next as { message?: string }).message ?? null)
+      }
+    } catch (err) {
+      onMessage(String(err))
+    } finally {
+      setUpdateBusy(null)
+    }
+  }
+
+  async function checkApp() {
+    await runUpdateAction('app', async () => {
+      const next = await window.lattice.checkAppUpdate()
+      setAppUpdate(next)
+      return next
+    })
+  }
+
+  async function downloadApp() {
+    await runUpdateAction('app', async () => {
+      const next = await window.lattice.downloadAppUpdate()
+      setAppUpdate(next)
+    })
+  }
+
+  async function installApp() {
+    await runUpdateAction('app', () => window.lattice.installAppUpdate())
+  }
+
+  async function checkWidgets() {
+    await runUpdateAction('widgets', async () => {
+      const next = await window.lattice.checkWidgetUpdates()
+      setWidgetUpdate(next)
+      return next
+    })
+  }
+
+  async function applyWidgetUpdates() {
+    await runUpdateAction('widgets', async () => {
+      const next = await window.lattice.updateWidgets()
+      setWidgetUpdate(next)
+      return next
+    })
+  }
 
   async function testConnection() {
-    setNotionBusy(true)
+    setNotionAction('test')
     setTestMessage(null)
     setTestOk(false)
     onMessage(null)
@@ -222,12 +308,12 @@ function SettingsPanel({
       setTestOk(false)
       setDbTitle(null)
     } finally {
-      setNotionBusy(false)
+      setNotionAction(null)
     }
   }
 
   async function saveNotion() {
-    setNotionBusy(true)
+    setNotionAction('save')
     setTestMessage(null)
     onMessage(null)
     try {
@@ -251,7 +337,7 @@ function SettingsPanel({
     } catch (err) {
       onMessage(String(err))
     } finally {
-      setNotionBusy(false)
+      setNotionAction(null)
     }
   }
 
@@ -327,6 +413,7 @@ function SettingsPanel({
               ['tag', 'Pastille / tag'],
               ['status', 'Importance / priorité'],
               ['urgency', 'Urgence (optionnel)'],
+              ['workflowStatus', 'Statut workflow (optionnel)'],
               ['doneCheckbox', 'Case terminé (optionnel)'],
             ] as const
           ).map(([key, label]) => (
@@ -386,7 +473,7 @@ function SettingsPanel({
             disabled={busy}
             onClick={() => void testConnection()}
           >
-            Tester la connexion
+            {notionAction === 'test' ? <ButtonSpinner label="Test en cours…" /> : 'Tester la connexion'}
           </button>
           <button
             type="button"
@@ -394,7 +481,7 @@ function SettingsPanel({
             disabled={busy}
             onClick={() => void saveNotion()}
           >
-            Enregistrer Notion
+            {notionAction === 'save' ? <ButtonSpinner label="Enregistrement…" /> : 'Enregistrer Notion'}
           </button>
         </div>
         {testMessage && (
@@ -478,6 +565,106 @@ function SettingsPanel({
       </section>
 
       <section className="catalog-settings-card">
+        <h2 className="catalog-settings-title">Mises à jour</h2>
+        <p className="catalog-settings-hint">
+          Version installée : <strong>Lattice v{version || '…'}</strong>. Une vérification
+          silencieuse a lieu au démarrage.
+        </p>
+
+        <label className="catalog-toggle-row">
+          <div className="catalog-toggle-copy">
+            <span className="catalog-field-label">Téléchargement automatique</span>
+            <span className="catalog-field-help">
+              Télécharge en arrière-plan et notifie Windows quand c’est prêt à installer.
+            </span>
+          </div>
+          <span className="catalog-switch catalog-switch-inline">
+            <input
+              type="checkbox"
+              checked={config.updates?.autoDownload === true}
+              disabled={busy}
+              onChange={(e) =>
+                void onSave({ updates: { autoDownload: e.target.checked } })
+              }
+            />
+            <span className="catalog-switch-track" aria-hidden>
+              <span className="catalog-switch-thumb" />
+            </span>
+          </span>
+        </label>
+
+        <p className="catalog-settings-hint catalog-update-status">
+          App : {appUpdate.message ?? appUpdate.status}
+          {typeof appUpdate.progress === 'number' ? ` (${appUpdate.progress} %)` : ''}
+        </p>
+
+        <div className="catalog-settings-actions">
+          <button
+            type="button"
+            className="catalog-detail-cta"
+            disabled={busy}
+            onClick={() => void checkApp()}
+          >
+            {updateBusy === 'app' && appUpdate.status === 'checking' ? (
+              <ButtonSpinner label="Vérification…" />
+            ) : (
+              'Vérifier la mise à jour de l’app'
+            )}
+          </button>
+          {appUpdate.status === 'available' && (
+            <button
+              type="button"
+              className="catalog-detail-cta catalog-detail-cta-secondary"
+              disabled={busy}
+              onClick={() => void downloadApp()}
+            >
+              Télécharger
+            </button>
+          )}
+          {appUpdate.status === 'ready' && (
+            <button
+              type="button"
+              className="catalog-detail-cta"
+              disabled={busy}
+              onClick={() => void installApp()}
+            >
+              Installer et redémarrer
+            </button>
+          )}
+        </div>
+
+        <p className="catalog-settings-hint catalog-update-status">
+          Widgets : {widgetUpdate.message ?? widgetUpdate.status}
+          {widgetUpdatesAvailable > 0 ? ` · ${widgetUpdatesAvailable} à mettre à jour` : ''}
+        </p>
+
+        <div className="catalog-settings-actions">
+          <button
+            type="button"
+            className="catalog-detail-cta"
+            disabled={busy}
+            onClick={() => void checkWidgets()}
+          >
+            {updateBusy === 'widgets' && widgetUpdate.status === 'checking' ? (
+              <ButtonSpinner label="Vérification…" />
+            ) : (
+              'Vérifier les mises à jour des widgets'
+            )}
+          </button>
+          {widgetUpdatesAvailable > 0 && (
+            <button
+              type="button"
+              className="catalog-detail-cta catalog-detail-cta-secondary"
+              disabled={busy}
+              onClick={() => void applyWidgetUpdates()}
+            >
+              Mettre à jour les widgets
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="catalog-settings-card">
         <h2 className="catalog-settings-title">Fichier config</h2>
         <p className="catalog-settings-path" title={config.configPath}>
           {config.configPath}
@@ -502,6 +689,7 @@ function SettingsPanel({
 export function CatalogWidget() {
   const [view, setView] = useState<CatalogView>(initialView)
   const [widgets, setWidgets] = useState<CatalogWidgetInfo[]>([])
+  const [widgetsLoading, setWidgetsLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -510,15 +698,25 @@ export function CatalogWidget() {
   const [version, setVersion] = useState('')
   const [savingSettings, setSavingSettings] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [remoteWidgets, setRemoteWidgets] = useState<WidgetUpdateInfo[]>([])
+  const [installingRemoteId, setInstallingRemoteId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   useEffect(() => {
     let cancelled = false
-    void window.lattice.listWidgets().then((list) => {
-      if (cancelled) return
-      setWidgets(list)
-      setSelectedId((prev) => prev ?? list[0]?.id ?? null)
-    })
+    void window.lattice
+      .listWidgets()
+      .then((list) => {
+        if (cancelled) return
+        setWidgets(list)
+        setSelectedId((prev) => prev ?? list[0]?.id ?? null)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err))
+      })
+      .finally(() => {
+        if (!cancelled) setWidgetsLoading(false)
+      })
     void window.lattice.getConfig().then((cfg) => {
       if (!cancelled) setConfig(cfg)
     })
@@ -528,6 +726,14 @@ export function CatalogWidget() {
     void window.lattice.isCatalogMaximized().then((value) => {
       if (!cancelled) setMaximized(value)
     })
+    void window.lattice
+      .listRemoteWidgets()
+      .then((list) => {
+        if (!cancelled) setRemoteWidgets(list)
+      })
+      .catch(() => {
+        /* catalogue distant optionnel */
+      })
     const unsubWidgets = window.lattice.onWidgetsChanged((list) => {
       startTransition(() => {
         setWidgets(list)
@@ -535,7 +741,9 @@ export function CatalogWidget() {
           if (prev && list.some((w) => w.id === prev)) return prev
           return list[0]?.id ?? null
         })
+        setWidgetsLoading(false)
       })
+      void window.lattice.listRemoteWidgets().then(setRemoteWidgets).catch(() => undefined)
     })
     const unsubMaximized = window.lattice.onCatalogMaximizedChanged((value) => {
       setMaximized(value)
@@ -565,6 +773,26 @@ export function CatalogWidget() {
     }
   }
 
+  async function installRemote(id: string) {
+    setInstallingRemoteId(id)
+    setError(null)
+    try {
+      const result = await window.lattice.installWidget(id)
+      if (!result.ok) setError(result.message)
+      else {
+        const list = await window.lattice.listWidgets()
+        setWidgets(list)
+        setSelectedId(id)
+        const remote = await window.lattice.listRemoteWidgets()
+        setRemoteWidgets(remote)
+      }
+    } catch (err) {
+      setError(String(err))
+    } finally {
+      setInstallingRemoteId(null)
+    }
+  }
+
   async function onToggleMaximize() {
     const next = await window.lattice.toggleMaximizeCatalog()
     setMaximized(next)
@@ -574,6 +802,7 @@ export function CatalogWidget() {
     refreshIntervalSeconds?: number
     demoMode?: boolean
     launchAtStartup?: boolean
+    updates?: { autoDownload?: boolean }
   }) {
     setSavingSettings(true)
     setSaveMessage(null)
@@ -594,6 +823,8 @@ export function CatalogWidget() {
   const builtinCount = widgets.filter((w) => w.source === 'builtin').length
   const externalCount = widgets.filter((w) => w.source === 'external').length
   const selected = widgets.find((w) => w.id === selectedId) ?? null
+  const installableRemote = remoteWidgets.filter((w) => w.status === 'not-installed')
+  const selectedRemote = remoteWidgets.find((w) => w.id === selectedId)
 
   const stats = [
     { key: 'active', label: 'Actifs', value: enabledCount, Icon: IconPulse },
@@ -695,10 +926,19 @@ export function CatalogWidget() {
                 </div>
 
                 <ul className="catalog-list">
-                  {widgets.length === 0 && (
+                  {widgetsLoading &&
+                    Array.from({ length: 3 }, (_, i) => (
+                      <SkeletonCard
+                        key={`skeleton-${i}`}
+                        as="li"
+                        lineWidths={['medium', 'wide', 'narrow']}
+                      />
+                    ))}
+                  {!widgetsLoading && widgets.length === 0 && (
                     <li className="catalog-empty">Aucun widget disponible dans le registre.</li>
                   )}
-                  {widgets.map((w) => {
+                  {!widgetsLoading &&
+                    widgets.map((w) => {
                     const isSelected = w.id === selectedId
                     const isPending = pendingId === w.id
                     return (
@@ -739,24 +979,86 @@ export function CatalogWidget() {
                             </div>
                           </div>
                         </div>
-                        <label className="catalog-switch">
-                          <input
-                            type="checkbox"
-                            checked={w.enabled}
-                            disabled={isPending}
-                            aria-label={
-                              w.enabled ? `Désactiver ${w.label}` : `Activer ${w.label}`
-                            }
-                            onChange={(e) => void toggle(w.id, e.target.checked)}
-                          />
-                          <span className="catalog-switch-track" aria-hidden>
-                            <span className="catalog-switch-thumb" />
+                        {isPending ? (
+                          <span className="catalog-switch catalog-switch-pending" aria-label="Mise à jour…">
+                            <span className="spinner is-muted" />
                           </span>
-                        </label>
+                        ) : (
+                          <label className="catalog-switch">
+                            <input
+                              type="checkbox"
+                              checked={w.enabled}
+                              aria-label={
+                                w.enabled ? `Désactiver ${w.label}` : `Activer ${w.label}`
+                              }
+                              onChange={(e) => void toggle(w.id, e.target.checked)}
+                            />
+                            <span className="catalog-switch-track" aria-hidden>
+                              <span className="catalog-switch-thumb" />
+                            </span>
+                          </label>
+                        )}
                       </li>
                     )
                   })}
                 </ul>
+
+                {installableRemote.length > 0 && (
+                  <>
+                    <div className="catalog-section-head" style={{ marginTop: '1.25rem' }}>
+                      <h2 className="catalog-section-title">Catalogue distant</h2>
+                      <span className="catalog-section-meta">
+                        {installableRemote.length} à installer
+                      </span>
+                    </div>
+                    <ul className="catalog-list">
+                      {installableRemote.map((w) => (
+                        <li
+                          key={`remote-${w.id}`}
+                          className={`catalog-item${selectedId === w.id ? ' is-selected' : ''}`}
+                        >
+                          <div
+                            className="catalog-item-hit"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedId(w.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                setSelectedId(w.id)
+                              }
+                            }}
+                          >
+                            <div className="catalog-item-body">
+                              <div className="catalog-item-title-row">
+                                <span className="catalog-item-label">{w.label}</span>
+                                <span className="catalog-badge catalog-badge-muted">
+                                  v{w.latestVersion}
+                                </span>
+                              </div>
+                              <p className="catalog-item-desc">
+                                {w.description || 'Widget distant disponible.'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="catalog-detail-cta"
+                            style={{ marginRight: 8, flexShrink: 0 }}
+                            disabled={installingRemoteId === w.id || w.status === 'incompatible'}
+                            onClick={() => void installRemote(w.id)}
+                          >
+                            {installingRemoteId === w.id ? (
+                              <ButtonSpinner label="…" />
+                            ) : (
+                              'Installer'
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </section>
 
               <aside className="catalog-detail" aria-label="Détails">
@@ -764,11 +1066,11 @@ export function CatalogWidget() {
                   <h2 className="catalog-section-title">Détails</h2>
                 </div>
 
-                {!selected ? (
+                {!selected && !selectedRemote ? (
                   <p className="catalog-detail-empty">
                     Sélectionnez un widget pour voir ses détails.
                   </p>
-                ) : (
+                ) : selected ? (
                   <div className="catalog-detail-card">
                     <h3 className="catalog-detail-name">{selected.label}</h3>
                     <p className="catalog-detail-desc">{selected.description}</p>
@@ -802,8 +1104,53 @@ export function CatalogWidget() {
                     >
                       {selected.enabled ? 'Désactiver' : 'Activer'}
                     </button>
+                    {selectedRemote?.status === 'update-available' && (
+                      <button
+                        type="button"
+                        className="catalog-detail-cta catalog-detail-cta-secondary"
+                        style={{ marginTop: 8 }}
+                        disabled={installingRemoteId === selected.id}
+                        onClick={() => void installRemote(selected.id)}
+                      >
+                        {installingRemoteId === selected.id
+                          ? 'Mise à jour…'
+                          : `Mettre à jour (v${selectedRemote.latestVersion})`}
+                      </button>
+                    )}
                   </div>
-                )}
+                ) : selectedRemote ? (
+                  <div className="catalog-detail-card">
+                    <h3 className="catalog-detail-name">{selectedRemote.label}</h3>
+                    <p className="catalog-detail-desc">
+                      {selectedRemote.description || 'Widget distant.'}
+                    </p>
+                    <dl className="catalog-detail-fields">
+                      <div className="catalog-detail-field">
+                        <dt>Source</dt>
+                        <dd>Catalogue distant</dd>
+                      </div>
+                      <div className="catalog-detail-field">
+                        <dt>Version</dt>
+                        <dd>v{selectedRemote.latestVersion}</dd>
+                      </div>
+                    </dl>
+                    <button
+                      type="button"
+                      className="catalog-detail-cta"
+                      disabled={
+                        installingRemoteId === selectedRemote.id ||
+                        selectedRemote.status === 'incompatible'
+                      }
+                      onClick={() => void installRemote(selectedRemote.id)}
+                    >
+                      {installingRemoteId === selectedRemote.id
+                        ? 'Installation…'
+                        : selectedRemote.status === 'incompatible'
+                          ? 'Incompatible'
+                          : 'Installer'}
+                    </button>
+                  </div>
+                ) : null}
               </aside>
             </div>
           </>

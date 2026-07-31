@@ -1,20 +1,59 @@
 import type {
+  ActivityCorrectionPayload,
+  ActivityCorrectionResult,
+  ActivityDaySummary,
+  ActivityExportFormat,
+  ActivityRules,
+  ActivitySettings,
+  AppUpdateState,
   CatalogWidgetInfo,
+  CreateTaskPayload,
+  CreateTaskResult,
+  DeleteTaskPayload,
+  DeleteTaskResult,
   NotionConnectionTestResult,
+  NotionPropertyOption,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
   SystemStats,
+  UpdateTaskFieldPayload,
+  UpdateTaskFieldResult,
+  WidgetUpdateInfo,
+  WidgetUpdatesState,
 } from '../shared/types'
 
 export type {
+  ActivityBrowserDetail,
+  ActivityCategory,
+  ActivityConfidence,
+  ActivityContextKind,
+  ActivityCorrectionPayload,
+  ActivityCorrectionResult,
+  ActivityCorrectionScope,
+  ActivityCurrentFocus,
+  ActivityDaySummary,
+  ActivityExportFormat,
+  ActivityQualityMetrics,
+  ActivityRules,
+  ActivitySettings,
+  AppUpdateState,
   CatalogWidgetInfo,
+  CreateTaskPayload,
+  CreateTaskResult,
+  DeleteTaskPayload,
+  DeleteTaskResult,
   NotionConnectionTestResult,
+  NotionPropertyOption,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
   SystemStats,
-}
+  UpdateTaskFieldPayload,
+  UpdateTaskFieldResult,
+  WidgetUpdateInfo,
+  WidgetUpdatesState,
+} from '../shared/types'
 
 export type CatalogView = 'catalog' | 'settings'
 
@@ -22,12 +61,20 @@ export interface LatticeApi {
   getTasks: () => Promise<NotionTask[]>
   refreshTasks: () => Promise<NotionTask[]>
   getTaskDescription: (pageId: string) => Promise<string | null>
+  getPropertyOptions: (
+    databaseId: string,
+    propertyName: string,
+  ) => Promise<NotionPropertyOption[]>
+  updateTaskField: (payload: UpdateTaskFieldPayload) => Promise<UpdateTaskFieldResult>
+  createTask: (payload: CreateTaskPayload) => Promise<CreateTaskResult>
+  deleteTask: (payload: DeleteTaskPayload) => Promise<DeleteTaskResult>
   getStats: () => Promise<SystemStats>
   getConfig: () => Promise<PublicConfig>
   updatePublicSettings: (patch: {
     refreshIntervalSeconds?: number
     demoMode?: boolean
     launchAtStartup?: boolean
+    updates?: { autoDownload?: boolean }
   }) => Promise<{ ok: boolean; config: PublicConfig }>
   getNotionSettings: () => Promise<PublicConfig>
   saveNotionSettings: (
@@ -55,10 +102,41 @@ export interface LatticeApi {
   hideMonitor: () => Promise<void>
   enableTemp: () => Promise<{ ok: boolean; message: string }>
   disableTemp: () => Promise<{ ok: boolean; message: string }>
+  getActivitySummary: (date?: string) => Promise<ActivityDaySummary>
+  getActivitySettings: () => Promise<ActivitySettings>
+  updateActivitySettings: (patch: Partial<ActivitySettings>) => Promise<ActivitySettings>
+  getActivityRules: () => Promise<ActivityRules>
+  reloadActivityRules: () => Promise<ActivityRules>
+  openActivityRules: () => Promise<void>
+  exportActivity: (opts: {
+    format: ActivityExportFormat
+    from?: string
+    to?: string
+  }) => Promise<{ ok: boolean; path?: string; message?: string }>
+  correctActivityCategory: (
+    payload: ActivityCorrectionPayload,
+  ) => Promise<ActivityCorrectionResult>
+  clearActivityData: () => Promise<{
+    ok: boolean
+    message: string
+    summary: ActivityDaySummary
+  }>
+  getAppUpdateStatus: () => Promise<AppUpdateState>
+  checkAppUpdate: () => Promise<AppUpdateState>
+  downloadAppUpdate: () => Promise<AppUpdateState>
+  installAppUpdate: () => Promise<{ ok: boolean }>
+  getWidgetUpdateStatus: () => Promise<WidgetUpdatesState>
+  checkWidgetUpdates: () => Promise<WidgetUpdatesState>
+  updateWidgets: (ids?: string[]) => Promise<WidgetUpdatesState>
+  installWidget: (id: string) => Promise<{ ok: boolean; message: string }>
+  listRemoteWidgets: () => Promise<WidgetUpdateInfo[]>
   onTasksUpdated: (cb: (tasks: NotionTask[]) => void) => () => void
   onTasksError: (cb: (message: string) => void) => () => void
   onStatsUpdated: (cb: (stats: SystemStats) => void) => () => void
+  onActivityUpdated: (cb: (summary: ActivityDaySummary) => void) => () => void
   onWidgetsChanged: (cb: (widgets: CatalogWidgetInfo[]) => void) => () => void
+  onAppUpdateStatus: (cb: (state: AppUpdateState) => void) => () => void
+  onWidgetUpdateStatus: (cb: (state: WidgetUpdatesState) => void) => () => void
 }
 
 declare global {

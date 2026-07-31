@@ -26,7 +26,19 @@ Edit `projectSources` in `config.json` to merge another database filtered by a p
     "databaseId": "https://www.notion.so/YOUR_TASKS_DATABASE_ID",
     "projectPageId": "https://www.notion.so/YOUR_PROJECT_PAGE_ID",
     "relationProperty": "Project",
-    "label": "My project"
+    "label": "My project",
+    "properties": {
+      "title": "Task name",
+      "date": "Due",
+      "tag": "Type",
+      "status": "Priority",
+      "workflowStatus": "Status",
+      "description": "Description"
+    },
+    "filters": {
+      "hideCompleted": true,
+      "completedStatusValues": ["Done"]
+    }
   }
 ]
 ```

@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { CalendarWidget } from './CalendarWidget'
 import { TasksWidget } from './TasksWidget'
 import { MonitorWidget } from './MonitorWidget'
+import { ActivityWidget } from './ActivityWidget'
 import { CatalogWidget } from './CatalogWidget'
 
 /**
@@ -12,6 +13,7 @@ export const widgetComponents: Record<string, ComponentType> = {
   calendar: CalendarWidget,
   tasks: TasksWidget,
   monitor: MonitorWidget,
+  activity: ActivityWidget,
   catalog: CatalogWidget,
 }
 

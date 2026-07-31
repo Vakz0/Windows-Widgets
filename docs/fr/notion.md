@@ -26,7 +26,19 @@ Les défauts (`Name`, `Date`, `Tags`, `Priority`, `Urgency`, `Done`) se renommen
     "databaseId": "https://www.notion.so/YOUR_TASKS_DATABASE_ID",
     "projectPageId": "https://www.notion.so/YOUR_PROJECT_PAGE_ID",
     "relationProperty": "Project",
-    "label": "Mon projet"
+    "label": "Mon projet",
+    "properties": {
+      "title": "Tâche",
+      "date": "Échéance",
+      "tag": "Type de tâche",
+      "status": "Priorité",
+      "workflowStatus": "Status",
+      "description": "Description"
+    },
+    "filters": {
+      "hideCompleted": true,
+      "completedStatusValues": ["Done"]
+    }
   }
 ]
 ```
