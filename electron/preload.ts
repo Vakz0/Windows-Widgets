@@ -12,11 +12,17 @@ import type {
   CreateTaskResult,
   DeleteTaskPayload,
   DeleteTaskResult,
+  FocusAllowlist,
+  FocusInterruptContext,
+  FocusJournalEntry,
+  FocusSession,
   NotionConnectionTestResult,
   NotionPropertyOption,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
+  ResolveFocusInterruptPayload,
+  StartFocusSessionPayload,
   SystemStats,
   UpdateTaskFieldPayload,
   UpdateTaskFieldResult,
@@ -104,6 +110,30 @@ const api = {
     message: string
     summary: ActivityDaySummary
   }> => ipcRenderer.invoke('clear-activity-data'),
+  startFocusSession: (
+    payload: StartFocusSessionPayload,
+  ): Promise<{ ok: boolean; session?: FocusSession; message?: string }> =>
+    ipcRenderer.invoke('start-focus-session', payload),
+  stopFocusSession: (): Promise<FocusSession | null> =>
+    ipcRenderer.invoke('stop-focus-session'),
+  pauseFocusSession: (): Promise<FocusSession | null> =>
+    ipcRenderer.invoke('pause-focus-session'),
+  resumeFocusSession: (): Promise<FocusSession | null> =>
+    ipcRenderer.invoke('resume-focus-session'),
+  getFocusSession: (): Promise<FocusSession | null> =>
+    ipcRenderer.invoke('get-focus-session'),
+  updateFocusAllowlist: (
+    patch: Partial<FocusAllowlist>,
+  ): Promise<FocusSession | null> => ipcRenderer.invoke('update-focus-allowlist', patch),
+  resolveFocusInterrupt: (
+    payload: ResolveFocusInterruptPayload,
+  ): Promise<{ ok: boolean; session: FocusSession | null; message?: string }> =>
+    ipcRenderer.invoke('resolve-focus-interrupt', payload),
+  getFocusJournal: (date?: string): Promise<FocusJournalEntry[]> =>
+    ipcRenderer.invoke('get-focus-journal', date),
+  getPendingFocusInterrupt: (): Promise<FocusInterruptContext | null> =>
+    ipcRenderer.invoke('get-pending-focus-interrupt'),
+  hideFocusInterrupt: (): Promise<void> => ipcRenderer.invoke('hide-focus-interrupt'),
   getAppUpdateStatus: (): Promise<AppUpdateState> =>
     ipcRenderer.invoke('get-app-update-status'),
   checkAppUpdate: (): Promise<AppUpdateState> => ipcRenderer.invoke('check-app-update'),
@@ -140,6 +170,16 @@ const api = {
     const listener = (_: unknown, summary: ActivityDaySummary) => cb(summary)
     ipcRenderer.on('activity-updated', listener)
     return () => ipcRenderer.removeListener('activity-updated', listener)
+  },
+  onFocusSessionUpdated: (cb: (session: FocusSession | null) => void) => {
+    const listener = (_: unknown, session: FocusSession | null) => cb(session)
+    ipcRenderer.on('focus-session-updated', listener)
+    return () => ipcRenderer.removeListener('focus-session-updated', listener)
+  },
+  onFocusInterrupt: (cb: (ctx: FocusInterruptContext) => void) => {
+    const listener = (_: unknown, ctx: FocusInterruptContext) => cb(ctx)
+    ipcRenderer.on('focus-interrupt', listener)
+    return () => ipcRenderer.removeListener('focus-interrupt', listener)
   },
   onWidgetsChanged: (cb: (widgets: CatalogWidgetInfo[]) => void) => {
     const listener = (_: unknown, widgets: CatalogWidgetInfo[]) => cb(widgets)

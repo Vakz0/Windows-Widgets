@@ -11,11 +11,17 @@ import type {
   CreateTaskResult,
   DeleteTaskPayload,
   DeleteTaskResult,
+  FocusAllowlist,
+  FocusInterruptContext,
+  FocusJournalEntry,
+  FocusSession,
   NotionConnectionTestResult,
   NotionPropertyOption,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
+  ResolveFocusInterruptPayload,
+  StartFocusSessionPayload,
   SystemStats,
   UpdateTaskFieldPayload,
   UpdateTaskFieldResult,
@@ -37,17 +43,26 @@ export type {
   ActivityQualityMetrics,
   ActivityRules,
   ActivitySettings,
+  ActivityTaskBreakdown,
   AppUpdateState,
   CatalogWidgetInfo,
   CreateTaskPayload,
   CreateTaskResult,
   DeleteTaskPayload,
   DeleteTaskResult,
+  FocusAllowlist,
+  FocusInterruptAction,
+  FocusInterruptContext,
+  FocusJournalEntry,
+  FocusSession,
+  FocusSessionStatus,
   NotionConnectionTestResult,
   NotionPropertyOption,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
+  ResolveFocusInterruptPayload,
+  StartFocusSessionPayload,
   SystemStats,
   UpdateTaskFieldPayload,
   UpdateTaskFieldResult,
@@ -121,6 +136,20 @@ export interface LatticeApi {
     message: string
     summary: ActivityDaySummary
   }>
+  startFocusSession: (
+    payload: StartFocusSessionPayload,
+  ) => Promise<{ ok: boolean; session?: FocusSession; message?: string }>
+  stopFocusSession: () => Promise<FocusSession | null>
+  pauseFocusSession: () => Promise<FocusSession | null>
+  resumeFocusSession: () => Promise<FocusSession | null>
+  getFocusSession: () => Promise<FocusSession | null>
+  updateFocusAllowlist: (patch: Partial<FocusAllowlist>) => Promise<FocusSession | null>
+  resolveFocusInterrupt: (
+    payload: ResolveFocusInterruptPayload,
+  ) => Promise<{ ok: boolean; session: FocusSession | null; message?: string }>
+  getFocusJournal: (date?: string) => Promise<FocusJournalEntry[]>
+  getPendingFocusInterrupt: () => Promise<FocusInterruptContext | null>
+  hideFocusInterrupt: () => Promise<void>
   getAppUpdateStatus: () => Promise<AppUpdateState>
   checkAppUpdate: () => Promise<AppUpdateState>
   downloadAppUpdate: () => Promise<AppUpdateState>
@@ -134,6 +163,8 @@ export interface LatticeApi {
   onTasksError: (cb: (message: string) => void) => () => void
   onStatsUpdated: (cb: (stats: SystemStats) => void) => () => void
   onActivityUpdated: (cb: (summary: ActivityDaySummary) => void) => () => void
+  onFocusSessionUpdated: (cb: (session: FocusSession | null) => void) => () => void
+  onFocusInterrupt: (cb: (ctx: FocusInterruptContext) => void) => () => void
   onWidgetsChanged: (cb: (widgets: CatalogWidgetInfo[]) => void) => () => void
   onAppUpdateStatus: (cb: (state: AppUpdateState) => void) => () => void
   onWidgetUpdateStatus: (cb: (state: WidgetUpdatesState) => void) => () => void

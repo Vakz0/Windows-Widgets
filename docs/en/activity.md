@@ -12,11 +12,12 @@ Local time-tracking for Lattice with **structured software context** (browser do
 - **IDE**: parse Cursor / VS Code → file + project
 - Classification: domain → title rules → app → Other
 - Manual corrections → `feedback.jsonl` + rules (apps, titles, **domains**)
-- Widget: summary, top apps / **sites** / **projects**, now, **day-by-day history**
-- Options: pause, Web, titles, IDE parse, AFK threshold
+- Widget: summary, top apps / **sites** / **projects** / **Notion tasks**, now, **day-by-day history**
+- Options: pause, Web, titles, IDE parse, AFK threshold, focus interrupt delay
+- **Notion focus sessions**: attribute time to a task + allowlist guard (see below)
 - **Optional browser extension**: media playback → no AFK + **watch time** per site (`extensions/lattice-media`)
-- Enriched CSV / JSON export
-- **Effacer…** button: deletes history (`days/`) and feedback; keeps `rules.json` / settings
+- Enriched CSV / JSON export (segments + focus journal)
+- **Clear…** button: deletes history (`days/`), feedback and focus journal; keeps `rules.json` / settings
 
 ## What is not counted
 
@@ -33,6 +34,20 @@ Local time-tracking for Lattice with **structured software context** (browser do
 - **Titles off**: no title text; `titleHash` kept
 - No cloud sync, keylogging, or screenshots
 
+## Focus sessions (Notion)
+
+Goal: work **only** on a Notion task, time that work, and interrupt when activity leaves the allowlist.
+
+1. Enable the **Activity** widget (`activity-tracker` service)
+2. From **Tasks** / **Calendar**: context menu or detail → **Work on this**
+3. The **Focus session** banner in Activity shows the task, status (active / paused / interrupted) and allowlist (apps, domains, IDE projects)
+4. Off-allowlist for the configured delay (default **8 s**, `Focus: Ns` option) → interrupt window: explain what you are doing, then resume / allow once / pause / stop
+5. Notes go to `focus-journal.jsonl`; attributed time appears under **Time by task** and in exports
+
+Initial allowlist: common work apps (`cursor`, `code`, `notion`…) + current focus context (IDE project / domain). Lattice widgets and AFK never trigger an interrupt.
+
+Attribution is **local** (Notion page id on segments) — no write-back of a “time spent” property to Notion in V1.
+
 ## Limits
 
 - Focus only (not background apps)
@@ -44,9 +59,11 @@ Local time-tracking for Lattice with **structured software context** (browser do
 
 | Path | Role |
 | --- | --- |
-| `activity/settings.json` | Pause, titles, AFK, `browserDetail`, `parseIdeTitles` |
+| `activity/settings.json` | Pause, titles, AFK, `browserDetail`, `parseIdeTitles`, `focusOffProjectDwellSec` |
 | `activity/rules.json` | Apps, title patterns, app/domain overrides, `ignoredApps` |
 | `activity/feedback.jsonl` | Corrections |
+| `activity/focus-session.json` | Current focus session (restored on restart) |
+| `activity/focus-journal.jsonl` | Interrupt notes (off-project explanations) |
 | `activity/days/YYYY-MM-DD.jsonl` | Segments |
 | `activity/days/YYYY-MM-DD.watch.json` | Extension watch time per domain |
 | `activity/media-bridge.json` | Token + endpoint for the media extension (created on start) |
@@ -78,6 +95,9 @@ Context:
 | `contextKind` | `browser` / `ide` / `chat` |
 | `fileName` | `activity.ts` |
 | `projectName` | `windows-widgets` |
+| `focusSessionId` | Focus session UUID |
+| `notionTaskId` | Notion page id |
+| `notionTaskTitle` | Task title snapshot |
 
 ### Classification
 

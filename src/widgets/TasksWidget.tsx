@@ -64,8 +64,8 @@ export function TasksWidget() {
     const shell = shellRef.current
     if (!shell) return
     const rect = shell.getBoundingClientRect()
-    const menuW = 168
-    const menuH = 84
+    const menuW = 180
+    const menuH = 120
     const x = Math.min(Math.max(8, e.clientX - rect.left), rect.width - menuW - 8)
     const y = Math.min(Math.max(8, e.clientY - rect.top), rect.height - menuH - 8)
     setContextMenu({ task, x, y, confirm: false })
@@ -93,6 +93,23 @@ export function TasksWidget() {
       }
     } catch (err) {
       unhideTask(task.id)
+      setActionError(String(err))
+    }
+  }
+
+  async function handleStartFocus(task: NotionTask) {
+    setContextMenu(null)
+    setActionError(null)
+    try {
+      const result = await window.lattice.startFocusSession({
+        notionTaskId: task.id,
+        notionTaskTitle: task.title,
+        databaseId: task.databaseId,
+      })
+      if (!result.ok) {
+        setActionError(result.message ?? 'Impossible de démarrer la session focus.')
+      }
+    } catch (err) {
       setActionError(String(err))
     }
   }
@@ -182,6 +199,14 @@ export function TasksWidget() {
             }}
           >
             Ouvrir
+          </button>
+          <button
+            type="button"
+            className="cal-context-item"
+            role="menuitem"
+            onClick={() => void handleStartFocus(contextMenu.task)}
+          >
+            Travailler dessus
           </button>
           {contextMenu.confirm ? (
             <button

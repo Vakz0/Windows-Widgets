@@ -36,6 +36,7 @@ import {
   clearActivityData,
   correctActivityCategory,
   exportActivity,
+  getActivityFocusSeed,
   getActivityRules,
   getActivitySettings,
   getActivitySummary,
@@ -43,12 +44,25 @@ import {
   handleActivitySuspend,
   isActivityTrackerRunning,
   openActivityRulesFile,
+  refreshActivitySummary,
   reloadActivityRules,
   setActivityUpdatedListener,
   startActivityTracker,
   stopActivityTracker,
   updateActivitySettings,
 } from './activity'
+import {
+  getFocusJournal,
+  getFocusSession,
+  getPendingFocusInterrupt,
+  pauseFocusSession,
+  resolveFocusInterrupt,
+  resumeFocusSession,
+  setFocusSessionListeners,
+  startFocusSession,
+  stopFocusSession,
+  updateFocusAllowlist,
+} from './focusSession'
 import { createTrayMenuController } from './trayMenu'
 import {
   getAllWidgetDefinitions,
@@ -83,9 +97,13 @@ import type {
   CreateTaskResult,
   DeleteTaskPayload,
   DeleteTaskResult,
+  FocusAllowlist,
+  FocusInterruptContext,
   NotionSettingsPatch,
   NotionTask,
   PublicConfig,
+  ResolveFocusInterruptPayload,
+  StartFocusSessionPayload,
   SystemStats,
   TaskPropertyMapping,
   TaskSourceFilters,
@@ -116,6 +134,7 @@ type PowerMode = 'active' | 'idle' | 'sleep'
 let config: AppConfig
 let tray: Tray | null = null
 let catalogWindow: BrowserWindow | null = null
+let focusInterruptWindow: BrowserWindow | null = null
 let tasksCache: NotionTask[] = []
 let statsCache: SystemStats | null = null
 let notionTimer: NodeJS.Timeout | null = null
@@ -591,6 +610,98 @@ function activityWidgetIds(): string[] {
 
 function pushActivitySummary(summary: ActivityDaySummary): void {
   sendTo(activityWidgetIds(), 'activity-updated', summary)
+}
+
+function broadcastFocusSession(): void {
+  const payload = getFocusSession()
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('focus-session-updated', payload)
+    }
+  }
+  refreshActivitySummary()
+}
+
+function hideFocusInterruptWindow(): void {
+  if (focusInterruptWindow && !focusInterruptWindow.isDestroyed()) {
+    focusInterruptWindow.hide()
+  }
+}
+
+function showFocusInterruptWindow(ctx: FocusInterruptContext): void {
+  const display = screen.getPrimaryDisplay().workArea
+  const width = 420
+  const height = 420
+  const x = display.x + Math.floor((display.width - width) / 2)
+  const y = display.y + Math.floor((display.height - height) / 2)
+
+  if (!focusInterruptWindow || focusInterruptWindow.isDestroyed()) {
+    focusInterruptWindow = new BrowserWindow({
+      width,
+      height,
+      x,
+      y,
+      show: false,
+      frame: false,
+      transparent: false,
+      resizable: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      hasShadow: true,
+      backgroundColor: '#191919',
+      icon: appIconPath(),
+      webPreferences: {
+        preload: preloadPath(),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+        backgroundThrottling: false,
+        spellcheck: false,
+        v8CacheOptions: 'code',
+      },
+    })
+    const icon = appIconImage()
+    if (!icon.isEmpty()) focusInterruptWindow.setIcon(icon)
+    focusInterruptWindow.setAlwaysOnTop(true, 'pop-up-menu')
+    focusInterruptWindow.setVisibleOnAllWorkspaces(true)
+
+    if (isDev && DEV_URL) {
+      void focusInterruptWindow.loadURL(`${DEV_URL}?widget=focus-interrupt`)
+    } else {
+      void focusInterruptWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+        query: { widget: 'focus-interrupt' },
+      })
+    }
+
+    focusInterruptWindow.on('closed', () => {
+      focusInterruptWindow = null
+    })
+  } else {
+    focusInterruptWindow.setBounds({ x, y, width, height })
+  }
+
+  const win = focusInterruptWindow
+  const sendCtx = () => {
+    if (!win.isDestroyed()) win.webContents.send('focus-interrupt', ctx)
+  }
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => {
+      sendCtx()
+      win.show()
+      win.focus()
+    })
+  } else {
+    sendCtx()
+    win.show()
+    win.focus()
+  }
+}
+
+function wireFocusSessionBridge(): void {
+  setFocusSessionListeners({
+    onChanged: () => broadcastFocusSession(),
+    onInterrupt: (ctx) => showFocusInterruptWindow(ctx),
+  })
 }
 
 function syncActivityService(): void {
@@ -1141,6 +1252,65 @@ function registerIpc(): void {
     return clearActivityData()
   })
 
+  ipcMain.handle('start-focus-session', (_e, payload: StartFocusSessionPayload) => {
+    if (!hasService('activity-tracker')) {
+      return { ok: false, message: 'Activez le widget Activité.' }
+    }
+    const seed = getActivityFocusSeed()
+    const result = startFocusSession({
+      ...payload,
+      seedAllowlist: {
+        apps: [...seed.apps, ...(payload?.seedAllowlist?.apps ?? [])],
+        domains: [...seed.domains, ...(payload?.seedAllowlist?.domains ?? [])],
+        ideProjects: [
+          ...seed.ideProjects,
+          ...(payload?.seedAllowlist?.ideProjects ?? []),
+        ],
+      },
+    })
+    if (result.ok) refreshActivitySummary()
+    return result
+  })
+  ipcMain.handle('stop-focus-session', () => {
+    const session = stopFocusSession()
+    hideFocusInterruptWindow()
+    refreshActivitySummary()
+    return session
+  })
+  ipcMain.handle('pause-focus-session', () => {
+    const session = pauseFocusSession()
+    hideFocusInterruptWindow()
+    refreshActivitySummary()
+    return session
+  })
+  ipcMain.handle('resume-focus-session', () => {
+    const session = resumeFocusSession()
+    refreshActivitySummary()
+    return session
+  })
+  ipcMain.handle('get-focus-session', () => getFocusSession())
+  ipcMain.handle('update-focus-allowlist', (_e, patch: Partial<FocusAllowlist>) => {
+    const session = updateFocusAllowlist(patch ?? {})
+    refreshActivitySummary()
+    return session
+  })
+  ipcMain.handle(
+    'resolve-focus-interrupt',
+    (_e, payload: ResolveFocusInterruptPayload) => {
+      const result = resolveFocusInterrupt(payload ?? { action: 'resume' })
+      if (result.ok) {
+        hideFocusInterruptWindow()
+        refreshActivitySummary()
+      }
+      return result
+    },
+  )
+  ipcMain.handle('get-focus-journal', (_e, date?: string) => getFocusJournal(date))
+  ipcMain.handle('get-pending-focus-interrupt', () => getPendingFocusInterrupt())
+  ipcMain.handle('hide-focus-interrupt', () => {
+    hideFocusInterruptWindow()
+  })
+
   ipcMain.handle('get-app-update-status', () => getAppUpdateState())
   ipcMain.handle('check-app-update', () => checkForAppUpdates({ silent: false }))
   ipcMain.handle('download-app-update', () => {
@@ -1174,6 +1344,7 @@ app.whenReady().then(() => {
   }
 
   applyLaunchAtStartup()
+  wireFocusSessionBridge()
   registerIpc()
   setupTray()
   setupPowerManagement()

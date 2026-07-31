@@ -5,6 +5,8 @@ import type {
   ActivityCorrectionScope,
   ActivityDaySummary,
   ActivitySettings,
+  FocusJournalEntry,
+  FocusSession,
 } from '../vite-env'
 
 const CATEGORY_ORDER: ActivityCategory[] = [
@@ -112,7 +114,15 @@ function emptySummary(date = todayKey()): ActivityDaySummary {
     urlHelperAvailable: true,
     mediaKeepAwake: false,
     topWatch: [],
+    focusSession: null,
+    topTasks: [],
   }
+}
+
+const FOCUS_STATUS_LABELS: Record<string, string> = {
+  active: 'Active',
+  interrupted: 'Interrompue',
+  paused: 'En pause',
 }
 
 function contextLine(current: NonNullable<ActivityDaySummary['current']>): string | null {
@@ -140,12 +150,27 @@ export function ActivityWidget() {
   const [hintError, setHintError] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [focusSession, setFocusSession] = useState<FocusSession | null>(null)
+  const [journal, setJournal] = useState<FocusJournalEntry[]>([])
+  const [allowApps, setAllowApps] = useState('')
+  const [allowDomains, setAllowDomains] = useState('')
+  const [allowProjects, setAllowProjects] = useState('')
   const viewDateRef = useRef(viewDate)
   viewDateRef.current = viewDate
 
   function setStatus(message: string | null, isError = false) {
     setHint(message)
     setHintError(isError)
+  }
+
+  function syncAllowlistFields(session: FocusSession | null) {
+    setAllowApps((session?.allowlist.apps ?? []).join(', '))
+    setAllowDomains((session?.allowlist.domains ?? []).join(', '))
+    setAllowProjects((session?.allowlist.ideProjects ?? []).join(', '))
+  }
+
+  function loadJournal(date: string) {
+    void window.lattice.getFocusJournal(date).then(setJournal).catch(() => setJournal([]))
   }
 
   useEffect(() => {
@@ -156,9 +181,19 @@ export function ActivityWidget() {
     void window.lattice.getActivitySettings().then((s) => {
       if (alive) setSettings(s)
     })
-    const off = window.lattice.onActivityUpdated((s) => {
+    void window.lattice.getFocusSession().then((s) => {
+      if (!alive) return
+      setFocusSession(s)
+      syncAllowlistFields(s)
+    })
+    loadJournal(viewDate)
+    const offActivity = window.lattice.onActivityUpdated((s) => {
       if (viewDateRef.current === todayKey()) {
         setSummary(s)
+      }
+      if (s.focusSession !== undefined) {
+        setFocusSession(s.focusSession)
+        syncAllowlistFields(s.focusSession)
       }
       setSettings((prev) =>
         prev
@@ -169,12 +204,19 @@ export function ActivityWidget() {
               idleThresholdSec: 180,
               browserDetail: 'domain',
               parseIdeTitles: true,
+              focusOffProjectDwellSec: 8,
             },
       )
     })
+    const offFocus = window.lattice.onFocusSessionUpdated((s) => {
+      setFocusSession(s)
+      syncAllowlistFields(s)
+      loadJournal(viewDateRef.current)
+    })
     return () => {
       alive = false
-      off()
+      offActivity()
+      offFocus()
     }
   }, [])
 
@@ -183,6 +225,7 @@ export function ActivityWidget() {
     void window.lattice.getActivitySummary(viewDate).then((s) => {
       if (alive) setSummary(s)
     })
+    loadJournal(viewDate)
     return () => {
       alive = false
     }
@@ -268,6 +311,18 @@ export function ActivityWidget() {
     await patchSettings(
       { idleThresholdSec: sec },
       `Seuil AFK : ${AFK_PRESETS.find((p) => p.sec === sec)?.label ?? `${sec}s`}.`,
+    )
+  }
+
+  async function cycleFocusDwell() {
+    if (!settings) return
+    const presets = [5, 8, 12, 20]
+    const cur = settings.focusOffProjectDwellSec ?? 8
+    const idx = presets.indexOf(cur)
+    const next = presets[(idx + 1) % presets.length]
+    await patchSettings(
+      { focusOffProjectDwellSec: next },
+      `Interruption focus après ${next}s hors allowlist.`,
     )
   }
 
@@ -378,6 +433,88 @@ export function ActivityWidget() {
     }
   }
 
+  async function focusPauseToggle() {
+    if (!focusSession) return
+    setBusy(true)
+    try {
+      const next =
+        focusSession.status === 'paused'
+          ? await window.lattice.resumeFocusSession()
+          : await window.lattice.pauseFocusSession()
+      setFocusSession(next)
+      syncAllowlistFields(next)
+      const s = await window.lattice.getActivitySummary(viewDate)
+      setSummary(s)
+    } catch (err) {
+      setStatus(errMessage(err, 'Session focus impossible.'), true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function focusStop() {
+    setBusy(true)
+    try {
+      await window.lattice.stopFocusSession()
+      setFocusSession(null)
+      syncAllowlistFields(null)
+      const s = await window.lattice.getActivitySummary(viewDate)
+      setSummary(s)
+      setStatus('Session focus terminée.')
+    } catch (err) {
+      setStatus(errMessage(err, 'Arrêt de session impossible.'), true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveAllowlist() {
+    if (!focusSession) return
+    setBusy(true)
+    try {
+      const next = await window.lattice.updateFocusAllowlist({
+        apps: allowApps.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+        domains: allowDomains.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+        ideProjects: allowProjects.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+      })
+      setFocusSession(next)
+      syncAllowlistFields(next)
+      setStatus('Allowlist mise à jour.')
+    } catch (err) {
+      setStatus(errMessage(err, 'Allowlist impossible à enregistrer.'), true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function addCurrentToAllowlist() {
+    if (!data.current || data.current.ignored) return
+    if (data.current.app) {
+      const apps = new Set(
+        allowApps.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+      )
+      apps.add(data.current.app)
+      setAllowApps([...apps].join(', '))
+    }
+    if (data.current.domain) {
+      const domains = new Set(
+        allowDomains.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+      )
+      domains.add(data.current.domain)
+      setAllowDomains([...domains].join(', '))
+    }
+    if (data.current.projectName) {
+      const projects = new Set(
+        allowProjects.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+      )
+      projects.add(data.current.projectName)
+      setAllowProjects([...projects].join(', '))
+    }
+  }
+
+  const session = focusSession ?? data.focusSession
+  const topTasks = data.topTasks ?? []
+
   const afkLabel =
     AFK_PRESETS.find((p) => p.sec === settings?.idleThresholdSec)?.label ??
     (settings ? `${settings.idleThresholdSec}s` : '…')
@@ -450,6 +587,89 @@ export function ActivityWidget() {
             </div>
           ) : null}
         </section>
+
+        {session ? (
+          <section className="activity-focus" aria-label="Session focus">
+            <div className="activity-section-title">Session focus</div>
+            <div className="activity-focus-card">
+              <div className="activity-focus-main">
+                <span className="activity-focus-task" title={session.notionTaskTitle}>
+                  {session.notionTaskTitle}
+                </span>
+                <span className={`activity-focus-status is-${session.status}`}>
+                  {FOCUS_STATUS_LABELS[session.status] ?? session.status}
+                </span>
+              </div>
+              <div className="activity-focus-actions">
+                <button
+                  type="button"
+                  className="activity-btn activity-btn-tiny"
+                  disabled={busy || session.status === 'interrupted'}
+                  onClick={() => void focusPauseToggle()}
+                >
+                  {session.status === 'paused' ? 'Reprendre' : 'Pause'}
+                </button>
+                <button
+                  type="button"
+                  className="activity-btn activity-btn-danger activity-btn-tiny"
+                  disabled={busy}
+                  onClick={() => void focusStop()}
+                >
+                  Stop
+                </button>
+              </div>
+              <label className="activity-focus-field">
+                <span>Apps autorisées</span>
+                <input
+                  className="activity-focus-input"
+                  value={allowApps}
+                  disabled={busy}
+                  onChange={(e) => setAllowApps(e.target.value)}
+                  placeholder="cursor, code, notion…"
+                />
+              </label>
+              <label className="activity-focus-field">
+                <span>Domaines</span>
+                <input
+                  className="activity-focus-input"
+                  value={allowDomains}
+                  disabled={busy}
+                  onChange={(e) => setAllowDomains(e.target.value)}
+                  placeholder="github.com, localhost…"
+                />
+              </label>
+              <label className="activity-focus-field">
+                <span>Projets IDE</span>
+                <input
+                  className="activity-focus-input"
+                  value={allowProjects}
+                  disabled={busy}
+                  onChange={(e) => setAllowProjects(e.target.value)}
+                  placeholder="windows-widgets…"
+                />
+              </label>
+              <div className="activity-focus-actions">
+                <button
+                  type="button"
+                  className="activity-btn activity-btn-ghost activity-btn-tiny"
+                  disabled={busy || !data.current || Boolean(data.current?.ignored)}
+                  onClick={addCurrentToAllowlist}
+                  title="Ajouter l’app / domaine / projet actuel"
+                >
+                  + Maintenant
+                </button>
+                <button
+                  type="button"
+                  className="activity-btn activity-btn-tiny"
+                  disabled={busy}
+                  onClick={() => void saveAllowlist()}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {data.current && isToday ? (
           <section className="activity-now" aria-label="Maintenant">
@@ -690,6 +910,50 @@ export function ActivityWidget() {
             </ul>
           </section>
         ) : null}
+
+        {topTasks.length > 0 ? (
+          <section className="activity-apps" aria-label="Tâches Notion">
+            <div className="activity-section-title">Temps par tâche</div>
+            <ul className="activity-app-list">
+              {topTasks.map((task) => (
+                <li key={task.notionTaskId} className="activity-app-row activity-app-row-simple">
+                  <span className="activity-app-name" title={task.title}>
+                    {task.title}
+                  </span>
+                  <span className="activity-app-time">{formatShortDuration(task.ms)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {journal.length > 0 ? (
+          <section className="activity-apps" aria-label="Journal focus">
+            <div className="activity-section-title">Journal focus</div>
+            <ul className="activity-journal-list">
+              {journal.map((entry, i) => (
+                <li key={`${entry.ts}-${i}`} className="activity-journal-row">
+                  <div className="activity-journal-meta">
+                    <span>
+                      {new Date(entry.ts).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    <span>{entry.app}</span>
+                    {entry.domain ? <span>{entry.domain}</span> : null}
+                    <span className="activity-journal-action">{entry.action}</span>
+                  </div>
+                  {entry.note ? (
+                    <div className="activity-journal-note">{entry.note}</div>
+                  ) : (
+                    <div className="activity-journal-note is-empty">Sans note</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
 
       <footer className="activity-footer no-drag">
@@ -831,6 +1095,15 @@ export function ActivityWidget() {
                 ) : null}
               </select>
             </label>
+            <button
+              type="button"
+              className="activity-btn activity-btn-ghost"
+              disabled={busy || !settings}
+              onClick={() => void cycleFocusDwell()}
+              title="Délai hors allowlist avant interruption de session focus"
+            >
+              Focus: {settings?.focusOffProjectDwellSec ?? 8}s
+            </button>
             <button
               type="button"
               className="activity-btn activity-btn-ghost"
