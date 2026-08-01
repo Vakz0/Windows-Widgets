@@ -32,6 +32,7 @@ export function useActivityWidget() {
   const [allowApps, setAllowApps] = useState('')
   const [allowDomains, setAllowDomains] = useState('')
   const [allowProjects, setAllowProjects] = useState('')
+  const [allowUrls, setAllowUrls] = useState('')
   const viewDateRef = useRef(viewDate)
   viewDateRef.current = viewDate
 
@@ -44,6 +45,7 @@ export function useActivityWidget() {
     setAllowApps((session?.allowlist.apps ?? []).join(', '))
     setAllowDomains((session?.allowlist.domains ?? []).join(', '))
     setAllowProjects((session?.allowlist.ideProjects ?? []).join(', '))
+    setAllowUrls((session?.allowlist.urls ?? []).join(', '))
   }
 
   function loadJournal(date: string) {
@@ -361,6 +363,7 @@ export function useActivityWidget() {
         apps: allowApps.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
         domains: allowDomains.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
         ideProjects: allowProjects.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
+        urls: allowUrls.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
       })
       setFocusSession(next)
       syncAllowlistFields(next)
@@ -369,31 +372,6 @@ export function useActivityWidget() {
       setStatus(errMessage(err, 'Allowlist impossible à enregistrer.'), true)
     } finally {
       setBusy(false)
-    }
-  }
-
-  function addCurrentToAllowlist() {
-    if (!data.current || data.current.ignored) return
-    if (data.current.app) {
-      const apps = new Set(
-        allowApps.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-      )
-      apps.add(data.current.app)
-      setAllowApps([...apps].join(', '))
-    }
-    if (data.current.domain) {
-      const domains = new Set(
-        allowDomains.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-      )
-      domains.add(data.current.domain)
-      setAllowDomains([...domains].join(', '))
-    }
-    if (data.current.projectName) {
-      const projects = new Set(
-        allowProjects.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-      )
-      projects.add(data.current.projectName)
-      setAllowProjects([...projects].join(', '))
     }
   }
 
@@ -416,6 +394,7 @@ export function useActivityWidget() {
     allowApps,
     allowDomains,
     allowProjects,
+    allowUrls,
     isToday,
     activeMs,
     categoryRows,
@@ -425,6 +404,7 @@ export function useActivityWidget() {
     setAllowApps,
     setAllowDomains,
     setAllowProjects,
+    setAllowUrls,
     setOptionsOpen,
     setConfirmClear,
     setStatus,
@@ -442,6 +422,5 @@ export function useActivityWidget() {
     focusPauseToggle,
     focusStop,
     saveAllowlist,
-    addCurrentToAllowlist,
   }
 }

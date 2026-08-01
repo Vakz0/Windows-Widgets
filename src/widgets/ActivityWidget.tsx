@@ -21,6 +21,7 @@ export function ActivityWidget() {
     allowApps,
     allowDomains,
     allowProjects,
+    allowUrls,
     isToday,
     activeMs,
     categoryRows,
@@ -30,6 +31,7 @@ export function ActivityWidget() {
     setAllowApps,
     setAllowDomains,
     setAllowProjects,
+    setAllowUrls,
     setOptionsOpen,
     setConfirmClear,
     setStatus,
@@ -47,7 +49,6 @@ export function ActivityWidget() {
     focusPauseToggle,
     focusStop,
     saveAllowlist,
-    addCurrentToAllowlist,
   } = useActivityWidget()
 
   return (
@@ -123,16 +124,16 @@ export function ActivityWidget() {
           <ActivityFocusPanel
             session={session}
             busy={busy}
-            current={data.current}
             allowApps={allowApps}
             allowDomains={allowDomains}
             allowProjects={allowProjects}
+            allowUrls={allowUrls}
             onAllowAppsChange={setAllowApps}
             onAllowDomainsChange={setAllowDomains}
             onAllowProjectsChange={setAllowProjects}
+            onAllowUrlsChange={setAllowUrls}
             onPauseToggle={() => void focusPauseToggle()}
             onStop={() => void focusStop()}
-            onAddCurrent={addCurrentToAllowlist}
             onSaveAllowlist={() => void saveAllowlist()}
           />
         ) : null}

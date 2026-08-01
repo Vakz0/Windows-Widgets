@@ -1,4 +1,4 @@
-import type { ActivityDaySummary, FocusSession } from '../../vite-env'
+import type { FocusSession } from '../../vite-env'
 
 const FOCUS_STATUS_LABELS: Record<string, string> = {
   active: 'Active',
@@ -9,32 +9,32 @@ const FOCUS_STATUS_LABELS: Record<string, string> = {
 type ActivityFocusPanelProps = {
   session: FocusSession
   busy: boolean
-  current: ActivityDaySummary['current']
   allowApps: string
   allowDomains: string
   allowProjects: string
+  allowUrls: string
   onAllowAppsChange: (value: string) => void
   onAllowDomainsChange: (value: string) => void
   onAllowProjectsChange: (value: string) => void
+  onAllowUrlsChange: (value: string) => void
   onPauseToggle: () => void
   onStop: () => void
-  onAddCurrent: () => void
   onSaveAllowlist: () => void
 }
 
 export function ActivityFocusPanel({
   session,
   busy,
-  current,
   allowApps,
   allowDomains,
   allowProjects,
+  allowUrls,
   onAllowAppsChange,
   onAllowDomainsChange,
   onAllowProjectsChange,
+  onAllowUrlsChange,
   onPauseToggle,
   onStop,
-  onAddCurrent,
   onSaveAllowlist,
 }: ActivityFocusPanelProps) {
   return (
@@ -97,16 +97,18 @@ export function ActivityFocusPanel({
             placeholder="windows-widgets…"
           />
         </label>
+        <label className="activity-focus-field">
+          <span>URLs / vidéos</span>
+          <input
+            className="activity-focus-input"
+            value={allowUrls}
+            disabled={busy}
+            onChange={(e) => onAllowUrlsChange(e.target.value)}
+            placeholder="youtube:VIDEO_ID…"
+            title="Clés URL autorisées (ex. youtube:dQw4w9WgXcQ)"
+          />
+        </label>
         <div className="activity-focus-actions">
-          <button
-            type="button"
-            className="activity-btn activity-btn-ghost activity-btn-tiny"
-            disabled={busy || !current || Boolean(current?.ignored)}
-            onClick={onAddCurrent}
-            title="Ajouter l’app / domaine / projet actuel"
-          >
-            + Maintenant
-          </button>
           <button
             type="button"
             className="activity-btn activity-btn-tiny"

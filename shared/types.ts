@@ -311,6 +311,8 @@ export interface FocusAllowlist {
   apps: string[]
   domains: string[]
   ideProjects: string[]
+  /** Clés URL normalisées (ex. `youtube:VIDEO_ID`) autorisées pour la session. */
+  urls: string[]
 }
 
 export interface FocusSession {
@@ -341,6 +343,8 @@ export interface FocusInterruptContext {
   app: string
   title: string | null
   domain: string | null
+  /** Chemin+query de l’URL navigateur au moment de l’interruption (si disponible). */
+  urlPath: string | null
   projectName: string | null
   notionTaskId: string
   notionTaskTitle: string

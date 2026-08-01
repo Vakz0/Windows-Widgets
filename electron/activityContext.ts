@@ -11,6 +11,10 @@ import type {
   ActivityCategory,
   ActivityContextKind,
 } from '../shared/types'
+import { normalizeDomain } from '../shared/domain'
+import { normalizeYoutubePageTitle, stripBrowserAppSuffix } from '../shared/youtubeVideo'
+
+export { normalizeDomain }
 
 const execFileAsync = promisify(execFile)
 
@@ -100,9 +104,46 @@ function resolveActiveUrlExe(): string | null {
   return null
 }
 
-export function normalizeDomain(host: string): string {
-  const h = host.trim().toLowerCase().replace(/\.$/, '')
-  return h.startsWith('www.') ? h.slice(4) : h
+/** Single-word page titles that should map to a real registrable domain. */
+const SITE_NAME_DOMAINS: Record<string, string> = {
+  youtube: 'youtube.com',
+  netflix: 'netflix.com',
+  twitch: 'twitch.tv',
+  spotify: 'spotify.com',
+  discord: 'discord.com',
+  github: 'github.com',
+  notion: 'notion.so',
+  reddit: 'reddit.com',
+  twitter: 'twitter.com',
+  facebook: 'facebook.com',
+  instagram: 'instagram.com',
+  tiktok: 'tiktok.com',
+  linkedin: 'linkedin.com',
+}
+
+/** Trailing " - SiteName" markers in browser tab titles (YouTube handled via shared helper). */
+const SITE_TITLE_SUFFIXES: Array<{ re: RegExp; domain: string }> = [
+  { re: /\s[-—–]\s*Netflix\s*$/i, domain: 'netflix.com' },
+  { re: /\s[-—–]\s*Twitch\s*$/i, domain: 'twitch.tv' },
+  { re: /\s[-—–]\s*Spotify\s*$/i, domain: 'spotify.com' },
+  { re: /\s[-—–]\s*Discord\s*$/i, domain: 'discord.com' },
+  { re: /\s[-—–]\s*GitHub\s*$/i, domain: 'github.com' },
+  { re: /\s[-—–]\s*Notion\s*$/i, domain: 'notion.so' },
+  { re: /\s[-—–]\s*Reddit\s*$/i, domain: 'reddit.com' },
+  { re: /\s[-—–]\s*X\s*$/i, domain: 'x.com' },
+  { re: /\s[-—–]\s*Twitter\s*$/i, domain: 'twitter.com' },
+]
+
+function domainFromSiteName(name: string): string | null {
+  const key = name.trim().toLowerCase()
+  return SITE_NAME_DOMAINS[key] ?? null
+}
+
+function isPlausibleHostname(host: string): boolean {
+  const d = normalizeDomain(host)
+  if (!d) return false
+  if (d === 'localhost' || d === '127.0.0.1') return true
+  return d.includes('.')
 }
 
 function parseUrlParts(
@@ -110,21 +151,38 @@ function parseUrlParts(
   detail: ActivityBrowserDetail,
 ): { domain: string | null; urlPath: string | null } {
   if (!rawUrl || detail === 'off') return { domain: null, urlPath: null }
+  const trimmed = rawUrl.trim()
+  const fromName = domainFromSiteName(trimmed)
+  if (fromName) return { domain: fromName, urlPath: null }
   try {
-    let input = rawUrl.trim()
+    let input = trimmed
     if (!/^https?:\/\//i.test(input) && !/^file:/i.test(input)) {
       input = `https://${input}`
     }
     const u = new URL(input)
+    if (!isPlausibleHostname(u.hostname)) {
+      return { domain: null, urlPath: null }
+    }
     const domain = normalizeDomain(u.hostname)
     if (detail === 'domain') return { domain, urlPath: null }
     const urlPath = `${u.pathname || '/'}${u.search || ''}${u.hash || ''}`
     return { domain, urlPath: urlPath === '/' ? null : urlPath }
   } catch {
     // bare domain
-    const m = rawUrl.match(/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i)
+    const m = trimmed.match(/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i)
     return m ? { domain: normalizeDomain(m[1]), urlPath: null } : { domain: null, urlPath: null }
   }
+}
+
+/** Infer a well-known site domain from a page title when the URL helper is unavailable. */
+export function domainFromKnownSiteTitle(pageTitle: string | null | undefined): string | null {
+  if (!pageTitle) return null
+  const trimmed = pageTitle.trim()
+  if (normalizeYoutubePageTitle(trimmed) !== null) return 'youtube.com'
+  for (const { re, domain } of SITE_TITLE_SUFFIXES) {
+    if (re.test(trimmed)) return domain
+  }
+  return domainFromSiteName(trimmed)
 }
 
 export function isActiveUrlHelperAvailable(): boolean {
@@ -245,11 +303,8 @@ export function parseIdeOrChatTitle(
 
 function parseBrowserTitleFallback(title: string | null): string | null {
   if (!title) return null
-  // "Page title - Google Chrome" / "Page title - Microsoft Edge"
-  const m = title.match(
-    /^(.+?) (?:—|–|-) (?:Google Chrome|Microsoft Edge|Brave|Mozilla Firefox|Opera|Vivaldi|Arc)$/i,
-  )
-  return m?.[1]?.trim() || null
+  const stripped = stripBrowserAppSuffix(title)
+  return stripped !== title.trim() ? stripped : null
 }
 
 /** Extract domain/path from a browser window title when UIA URL is unavailable. */
@@ -262,9 +317,13 @@ export function domainFromBrowserTitle(
   if (pageTitle) {
     const fromPage = parseUrlParts(pageTitle, detail)
     if (fromPage.domain) return fromPage
+    const known = domainFromKnownSiteTitle(pageTitle)
+    if (known) return { domain: known, urlPath: null }
   }
   const host = title.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i)
   if (host) return parseUrlParts(host[0], detail)
+  const knownFull = domainFromKnownSiteTitle(title)
+  if (knownFull) return { domain: knownFull, urlPath: null }
   return { domain: null, urlPath: null }
 }
 

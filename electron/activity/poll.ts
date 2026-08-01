@@ -17,6 +17,7 @@ import {
   ensureFocusSessionLoaded,
   evaluateFocusGuard,
   getFocusAttribution,
+  hasFocusSession,
 } from '../focusSession'
 import { isMediaKeepAwakeActive } from '../activityMediaBridge'
 import { classify, isIgnoredApp, type ClassifyResult } from './classifier'
@@ -151,8 +152,11 @@ function makeSegment(opts: {
 type PollSample = {
   idle: boolean
   app: string
-  title: string | null
+  /** Window title for focus guard (kept even when storeTitles is off). */
+  guardTitle: string | null
   domain: string | null
+  /** Full URL path for focus guard (may be set even when segment omits urlPath). */
+  urlPath: string | null
   projectName: string | null
   ignored: boolean
   next: ActivitySegment
@@ -197,19 +201,27 @@ async function resolvePollSample(now: Date): Promise<PollSample> {
 
   let domain: string | null = null
   let urlPath: string | null = null
+  /** Path used by focus guard; may differ from segment persistence. */
+  let guardUrlPath: string | null = null
   let contextKind: ActivityContextKind | null = null
   let fileName: string | null = null
   let projectName: string | null = null
 
   if (!idle && !ignored) {
     if (BROWSER_APPS.has(app) && settings.browserDetail !== 'off') {
-      const browser = await fetchBrowserUrl(app, settings.browserDetail)
+      // During a focus session, always resolve full URL for video-level allowlisting
+      // even when tracking settings only store the domain.
+      const needUrlForFocus = hasFocusSession()
+      const fetchDetail = needUrlForFocus ? 'url' : settings.browserDetail
+      const browser = await fetchBrowserUrl(app, fetchDetail)
       domain = browser.domain
-      urlPath = browser.urlPath
+      guardUrlPath = browser.urlPath
+      urlPath = settings.browserDetail === 'url' ? browser.urlPath : null
       if (!domain) {
-        const fromTitle = domainFromBrowserTitle(rawTitle || null, settings.browserDetail)
+        const fromTitle = domainFromBrowserTitle(rawTitle || null, fetchDetail)
         domain = fromTitle.domain
-        urlPath = fromTitle.urlPath
+        guardUrlPath = fromTitle.urlPath
+        urlPath = settings.browserDetail === 'url' ? fromTitle.urlPath : null
       }
       contextKind = 'browser'
     } else {
@@ -267,7 +279,16 @@ async function resolvePollSample(now: Date): Promise<PollSample> {
     ignored,
   })
 
-  return { idle, app, title: next.title, domain, projectName, ignored, next }
+  return {
+    idle,
+    app,
+    guardTitle: idle || ignored ? null : rawTitle || null,
+    domain,
+    urlPath: guardUrlPath,
+    projectName,
+    ignored,
+    next,
+  }
 }
 
 export async function pollOnce(): Promise<void> {
@@ -279,13 +300,14 @@ export async function pollOnce(): Promise<void> {
     const now = new Date()
     const nowMs = now.getTime()
     const sample = await resolvePollSample(now)
-    const { idle, app, domain, projectName, ignored, next } = sample
+    const { idle, app, domain, urlPath, projectName, ignored, next, guardTitle } = sample
 
     const guard = await evaluateFocusGuard({
       nowMs,
       app,
-      title: next.title,
+      title: guardTitle,
       domain,
+      urlPath,
       projectName,
       ignored,
       idle,

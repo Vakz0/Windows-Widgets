@@ -14,7 +14,14 @@ import type {
   ResolveFocusInterruptPayload,
   StartFocusSessionPayload,
 } from '../shared/types'
-import { normalizeDomain } from './activityContext'
+import { isYoutubeHost } from '../shared/youtubeVideo'
+import {
+  allowOnceUrlKeys,
+  isBrowserApp,
+  isOnFocusAllowlist,
+  normalizeProject,
+  sanitizeFocusAllowlist,
+} from './activity/focusAllowlist'
 import {
   activityDir,
   assertWithin,
@@ -24,6 +31,7 @@ import {
   todayKey,
 } from './activity/paths'
 import { normalizeAppKey } from './activity/normalize'
+import { normalizeDomain } from './activityContext'
 
 const DEFAULT_APPS = ['cursor', 'code', 'code - insiders', 'notion', 'windowsterminal', 'powershell', 'pwsh']
 
@@ -41,56 +49,13 @@ function ensureDirs(): void {
   fs.mkdirSync(activityDir(), { recursive: true })
 }
 
-function normalizeProject(name: string): string {
-  return name.trim().toLowerCase()
-}
-
-function uniqNormalized(values: string[], normalize: (v: string) => string): string[] {
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const raw of values) {
-    if (typeof raw !== 'string') continue
-    const n = normalize(raw)
-    if (!n || seen.has(n)) continue
-    seen.add(n)
-    out.push(n)
-  }
-  return out
-}
-
-function sanitizeAllowlist(raw?: Partial<FocusAllowlist> | null): FocusAllowlist {
-  return {
-    apps: uniqNormalized([...(raw?.apps ?? [])], normalizeAppKey),
-    domains: uniqNormalized([...(raw?.domains ?? [])], normalizeDomain),
-    ideProjects: uniqNormalized([...(raw?.ideProjects ?? [])], normalizeProject),
-  }
-}
-
 function defaultAllowlist(seed?: Partial<FocusAllowlist>): FocusAllowlist {
-  return sanitizeAllowlist({
+  return sanitizeFocusAllowlist({
     apps: [...DEFAULT_APPS, ...(seed?.apps ?? [])],
     domains: [...(seed?.domains ?? [])],
     ideProjects: [...(seed?.ideProjects ?? [])],
+    urls: [...(seed?.urls ?? [])],
   })
-}
-
-function domainMatches(allowed: string[], domain: string | null): boolean {
-  if (!domain) return false
-  const d = normalizeDomain(domain)
-  return allowed.some((a) => d === a || d.endsWith(`.${a}`))
-}
-
-function isOnFocusAllowlist(
-  allowlist: FocusAllowlist,
-  sample: { app: string; domain: string | null; projectName: string | null },
-): boolean {
-  const appKey = normalizeAppKey(sample.app)
-  if (allowlist.apps.includes(appKey)) return true
-  if (sample.projectName && allowlist.ideProjects.includes(normalizeProject(sample.projectName))) {
-    return true
-  }
-  if (domainMatches(allowlist.domains, sample.domain)) return true
-  return false
 }
 
 function emitChanged(): void {
@@ -135,7 +100,7 @@ async function loadPersistedSession(): Promise<void> {
       databaseId: String(raw.databaseId ?? ''),
       startedAt: String(raw.startedAt),
       status: raw.status === 'paused' || raw.status === 'interrupted' ? raw.status : 'active',
-      allowlist: sanitizeAllowlist(raw.allowlist),
+      allowlist: sanitizeFocusAllowlist(raw.allowlist),
     }
     // Don't auto-reopen an interrupt modal after restart — resume as paused if interrupted.
     if (session.status === 'interrupted') {
@@ -164,6 +129,11 @@ export function setFocusSessionListeners(opts: {
 /** In-memory snapshot (no I/O). Call ensureFocusSessionLoaded() first when needed. */
 export function getFocusSession(): FocusSession | null {
   return session ? structuredClone(session) : null
+}
+
+/** True when a focus session exists (no clone). */
+export function hasFocusSession(): boolean {
+  return session != null
 }
 
 export function getPendingFocusInterrupt(): FocusInterruptContext | null {
@@ -246,10 +216,11 @@ export async function updateFocusAllowlist(patch: Partial<FocusAllowlist>): Prom
   if (!session) return null
   session = {
     ...session,
-    allowlist: sanitizeAllowlist({
+    allowlist: sanitizeFocusAllowlist({
       apps: patch.apps ?? session.allowlist.apps,
       domains: patch.domains ?? session.allowlist.domains,
       ideProjects: patch.ideProjects ?? session.allowlist.ideProjects,
+      urls: patch.urls ?? session.allowlist.urls,
     }),
   }
   await persistSession()
@@ -328,6 +299,7 @@ async function beginInterrupt(sample: {
   app: string
   title: string | null
   domain: string | null
+  urlPath: string | null
   projectName: string | null
 }): Promise<boolean> {
   if (!session || session.status !== 'active' || pendingInterrupt) return false
@@ -335,6 +307,7 @@ async function beginInterrupt(sample: {
     app: sample.app,
     title: sample.title,
     domain: sample.domain,
+    urlPath: sample.urlPath,
     projectName: sample.projectName,
     notionTaskId: session.notionTaskId,
     notionTaskTitle: session.notionTaskTitle,
@@ -354,7 +327,9 @@ function shouldBeginInterrupt(
   sample: {
     nowMs: number
     app: string
+    title?: string | null
     domain: string | null
+    urlPath: string | null
     projectName: string | null
     ignored: boolean
     idle: boolean
@@ -372,6 +347,8 @@ function shouldBeginInterrupt(
     isOnFocusAllowlist(activeSession.allowlist, {
       app: sample.app,
       domain: sample.domain,
+      urlPath: sample.urlPath,
+      title: sample.title ?? null,
       projectName: sample.projectName,
     })
   ) {
@@ -397,6 +374,7 @@ export async function evaluateFocusGuard(sample: {
   app: string
   title: string | null
   domain: string | null
+  urlPath: string | null
   projectName: string | null
   ignored: boolean
   idle: boolean
@@ -431,20 +409,32 @@ function applyInterruptAction(
     const apps = [...current.allowlist.apps]
     const domains = [...current.allowlist.domains]
     const ideProjects = [...current.allowlist.ideProjects]
-    const appKey = normalizeAppKey(ctx.app)
-    if (appKey && appKey !== 'unknown' && !apps.includes(appKey)) apps.push(appKey)
-    if (ctx.domain) {
-      const d = normalizeDomain(ctx.domain)
-      if (d && !domains.includes(d)) domains.push(d)
-    }
-    if (ctx.projectName) {
-      const p = normalizeProject(ctx.projectName)
-      if (p && !ideProjects.includes(p)) ideProjects.push(p)
+    const urls = [...current.allowlist.urls]
+    const urlKeys = allowOnceUrlKeys({
+      domain: ctx.domain,
+      urlPath: ctx.urlPath,
+      title: ctx.title,
+    })
+    if (urlKeys.length > 0) {
+      urls.push(...urlKeys)
+    } else {
+      const appKey = normalizeAppKey(ctx.app)
+      // Never add the whole browser — that would allow all browsing.
+      if (appKey && appKey !== 'unknown' && !isBrowserApp(appKey)) {
+        apps.push(appKey)
+      }
+      // Never widen YouTube to the whole domain when we could not lock a video/title.
+      if (ctx.domain && !isYoutubeHost(ctx.domain)) {
+        domains.push(normalizeDomain(ctx.domain))
+      }
+      if (ctx.projectName) {
+        ideProjects.push(normalizeProject(ctx.projectName))
+      }
     }
     return {
       ...current,
       status: 'active',
-      allowlist: { apps, domains, ideProjects },
+      allowlist: sanitizeFocusAllowlist({ apps, domains, ideProjects, urls }),
     }
   }
 
@@ -473,10 +463,20 @@ export async function resolveFocusInterrupt(payload: ResolveFocusInterruptPayloa
       ? payload.action
       : 'resume'
 
+  const note = (payload.note ?? '').trim()
+  if (action !== 'resume' && !note) {
+    return {
+      ok: false,
+      session: structuredClone(session),
+      message: 'Une raison est obligatoire pour cette action.',
+    }
+  }
+
   const ctx = pendingInterrupt ?? {
     app: 'unknown',
     title: null,
     domain: null,
+    urlPath: null,
     projectName: null,
     notionTaskId: session.notionTaskId,
     notionTaskTitle: session.notionTaskTitle,
@@ -491,7 +491,7 @@ export async function resolveFocusInterrupt(payload: ResolveFocusInterruptPayloa
     title: ctx.title,
     domain: ctx.domain,
     projectName: ctx.projectName,
-    note: (payload.note ?? '').trim(),
+    note,
     action,
   })
 

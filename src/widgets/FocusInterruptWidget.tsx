@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FocusInterruptContext } from '../vite-env'
+import { extractYoutubeVideoId, youtubeTitleAllowlistKey } from '../../shared/youtubeVideo'
 
 export function FocusInterruptWidget() {
   const [ctx, setCtx] = useState<FocusInterruptContext | null>(null)
@@ -26,12 +27,17 @@ export function FocusInterruptWidget() {
   async function resolve(
     action: 'resume' | 'allow_once' | 'pause' | 'stop',
   ) {
+    const trimmed = note.trim()
+    if (action !== 'resume' && !trimmed) {
+      setError('Indique une raison avant de continuer.')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
       const res = await window.lattice.resolveFocusInterrupt({
         action,
-        note: note.trim(),
+        note: trimmed,
       })
       if (!res.ok) {
         setError(res.message ?? 'Échec.')
@@ -45,9 +51,17 @@ export function FocusInterruptWidget() {
     }
   }
 
+  const youtubeVideo =
+    ctx != null ? extractYoutubeVideoId(ctx.domain, ctx.urlPath) : null
+  const isYoutubeAllow =
+    Boolean(youtubeVideo) || Boolean(ctx && youtubeTitleAllowlistKey(ctx.title))
+  const hasReason = note.trim().length > 0
+  const reasonTitle = hasReason ? undefined : 'Une raison est obligatoire'
+
   const contextBits = [
     ctx?.app,
     ctx?.domain,
+    youtubeVideo ? `vidéo ${youtubeVideo}` : null,
     ctx?.projectName,
     ctx?.title,
   ].filter(Boolean)
@@ -74,7 +88,7 @@ export function FocusInterruptWidget() {
         )}
 
         <label className="focus-interrupt-label" htmlFor="focus-note">
-          Qu’est-ce que tu fais ?
+          Qu’est-ce que tu fais ? <span className="focus-interrupt-required">obligatoire sauf pour reprendre</span>
         </label>
         <textarea
           id="focus-note"
@@ -82,8 +96,11 @@ export function FocusInterruptWidget() {
           rows={4}
           value={note}
           disabled={busy}
-          placeholder="Explique brièvement — conservé pour analyse…"
-          onChange={(e) => setNote(e.target.value)}
+          placeholder="Justifie brièvement — requis pour autoriser, pause ou terminer…"
+          onChange={(e) => {
+            setNote(e.target.value)
+            if (error) setError(null)
+          }}
         />
 
         {error ? <div className="error-banner">{error}</div> : null}
@@ -100,15 +117,17 @@ export function FocusInterruptWidget() {
           <button
             type="button"
             className="activity-btn"
-            disabled={busy}
+            disabled={busy || !hasReason}
+            title={reasonTitle}
             onClick={() => void resolve('allow_once')}
           >
-            Autoriser cette fois
+            {isYoutubeAllow ? 'Autoriser cette vidéo' : 'Autoriser cette fois'}
           </button>
           <button
             type="button"
             className="activity-btn"
-            disabled={busy}
+            disabled={busy || !hasReason}
+            title={reasonTitle}
             onClick={() => void resolve('pause')}
           >
             Pause session
@@ -116,7 +135,8 @@ export function FocusInterruptWidget() {
           <button
             type="button"
             className="activity-btn activity-btn-danger"
-            disabled={busy}
+            disabled={busy || !hasReason}
+            title={reasonTitle}
             onClick={() => void resolve('stop')}
           >
             Terminer

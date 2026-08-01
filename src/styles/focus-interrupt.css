@@ -273,6 +273,12 @@
   color: var(--text);
 }
 
+.focus-interrupt-required {
+  font-weight: 500;
+  color: var(--text-62);
+  font-size: 11px;
+}
+
 .focus-interrupt-note {
   width: 100%;
   resize: vertical;
