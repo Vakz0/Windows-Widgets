@@ -19,13 +19,12 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
 </p>
 
-> Widgets bureau composables pour Windows — activez uniquement ce dont vous avez besoin (calendrier & tâches Notion, monitoring, suivi d’activité, …).
+> Widgets bureau composables pour Windows — activez uniquement ce dont vous avez besoin (calendrier & tâches Notion, suivi d’activité, …).
 
 ## Fonctionnalités
 
-- **Catalogue** — shell vide au premier lancement ; activez Calendrier, Tâches, Monitoring, Activité depuis le systray
+- **Catalogue** — shell vide au premier lancement ; activez Calendrier, Tâches, Activité depuis le systray
 - **Notion** — calendrier semaine + tâches ouvertes sur le bureau (mode démo sans token)
-- **Monitoring** — CPU, RAM, température optionnelle depuis le tray
 - **Activité** — temps focus local par app/catégorie (travail, divertissement…) avec export CSV/JSON ; [extension média](extensions/lattice-media/README.md) optionnelle pour éviter l’AFK pendant une vidéo — [guide](docs/fr/activity.md)
 - **Mises à jour** — installateur NSIS via GitHub Releases ; vérification au démarrage + boutons dans Paramètres (app et widgets externes)
 
@@ -75,6 +74,9 @@ Publier une version : tag `vX.Y.Z` → workflow GitHub Actions (voir [docs/fr/de
 | Notion | [notion.md](docs/en/notion.md) | [notion.md](docs/fr/notion.md) |
 | Activité | [activity.md](docs/en/activity.md) | [activity.md](docs/fr/activity.md) |
 | Développement | [development.md](docs/en/development.md) | [development.md](docs/fr/development.md) |
+| Décisions | [decisions.md](docs/en/decisions.md) | [decisions.md](docs/fr/decisions.md) |
+
+Constitution agent : [`CLAUDE.md`](CLAUDE.md) · règles & mémoire : [`.claude/`](.claude/).
 
 ## Auteur
 

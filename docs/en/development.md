@@ -4,7 +4,7 @@
 
 ## Setup
 
-Windows 10/11, Node.js 20+, .NET SDK (for `tools/cpu-temp`).
+Windows 10/11, Node.js 20+, .NET SDK (for `tools/cpu-temp` and `tools/active-url`).
 
 ```bash
 npm install
@@ -15,17 +15,28 @@ npm run dist     # NSIS installer → release/
 
 Dev config: copy `config.example.json` → `config.json` at the repo root.
 
+Agent / contributor invariants: [`CLAUDE.md`](../../CLAUDE.md) · decisions: [`docs/en/decisions.md`](decisions.md).
+
 ## Layout
 
 ```
-electron/     # Main process (Notion, tray, config, widget registry, updates)
-src/          # React widgets
-shared/       # Shared types
-tools/cpu-temp/
-assets/
-widgets-catalog.json   # Remote catalog for external widgets
-.github/workflows/     # Release CI
+electron/           # Main process
+  activity/         # Activity tracker domain
+  focus/            # Focus sessions + interrupt window
+  notion/           # Notion API domain
+  bootstrap/        # App wiring helpers (tray, refresh, public config)
+  ipc/              # IPC handlers by domain (*Ipc.ts)
+  preload/          # contextBridge API slices (*Api.ts)
+  windows/ widgets/
+src/                # React widgets (by feature under widgets/)
+shared/             # Shared types (types/) + pure helpers
+extensions/         # Browser extension (media bridge)
+tools/cpu-temp/ tools/active-url/
+docs/               # Guides (EN/FR) + decisions log
+.claude/            # Agent rules + versioned project memory
 ```
+
+Prefer domain folders over growing root files. Root `electron/*.ts` files marked `@deprecated` are migration shims — import from the domain module instead.
 
 ## Publish a release
 
@@ -85,12 +96,21 @@ URLs checked by the app (in order):
 
 ## Add a builtin widget
 
-1. React component in `src/widgets/`
+1. React component in `src/widgets/` (feature subfolder optional)
 2. Register in `src/widgets/registry.tsx`
 3. Add definition in `electron/widgets/registry.ts`
-4. New IPC → `main.ts` + `preload.ts` + `src/vite-env.d.ts`
+4. New IPC → `electron/ipc/<domain>Ipc.ts` + `electron/preload/<domain>Api.ts` + `src/vite-env.d.ts` (wire through `electron/ipc/index.ts` and `electron/preload.ts`)
 
-Existing services: `notion`, `system-stats`, `temp-daemon`, `activity-tracker` (see `docs/en/activity.md`).
+### Services
+
+| Service id | Used by builtins today | Notes |
+| --- | --- | --- |
+| `notion` | `calendar`, `tasks` | Notion fetch/edit |
+| `activity-tracker` | `activity` | Local activity + focus sessions |
+| `system-stats` | — (no builtin) | Reserved for external / tray stats consumers |
+| `temp-daemon` | — (no builtin) | Reserved for temperature helper consumers |
+
+The former `monitor` builtin was removed; do not assume a desktop monitor widget exists.
 
 Native helpers: `npm run build:helpers` (cpu-temp + active-url).
 
@@ -99,7 +119,8 @@ Native helpers: `npm run build:helpers` (cpu-temp + active-url).
 | Script | Role |
 | --- | --- |
 | `dev` | Dev mode |
-| `build` | Production build (+ cpu-temp) |
+| `build` | Production build (+ helpers) |
+| `test` | Vitest |
 | `app` | Run last build |
 | `dist` | Package installer |
 | `shortcuts` | Recreate Desktop / Start Menu shortcuts |

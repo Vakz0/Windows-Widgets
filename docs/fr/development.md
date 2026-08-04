@@ -4,7 +4,7 @@
 
 ## Setup
 
-Windows 10/11, Node.js 20+, .NET SDK (pour `tools/cpu-temp`).
+Windows 10/11, Node.js 20+, .NET SDK (pour `tools/cpu-temp` et `tools/active-url`).
 
 ```bash
 npm install
@@ -15,17 +15,28 @@ npm run dist     # Installateur NSIS → release/
 
 Config dev : copier `config.example.json` → `config.json` à la racine.
 
+Invariants agent / contributeur : [`CLAUDE.md`](../../CLAUDE.md) · décisions : [`docs/fr/decisions.md`](decisions.md).
+
 ## Arborescence
 
 ```
-electron/     # Process principal (Notion, tray, config, registre widgets, updates)
-src/          # Widgets React
-shared/       # Types partagés
-tools/cpu-temp/
-assets/
-widgets-catalog.json   # Catalogue distant des widgets externes
-.github/workflows/     # Release CI
+electron/           # Process principal
+  activity/         # Domaine suivi d’activité
+  focus/            # Sessions focus + fenêtre d’interruption
+  notion/           # Domaine API Notion
+  bootstrap/        # Câblage app (tray, refresh, config publique)
+  ipc/              # Handlers IPC par domaine (*Ipc.ts)
+  preload/          # Tranches contextBridge (*Api.ts)
+  windows/ widgets/
+src/                # Widgets React (par feature sous widgets/)
+shared/             # Types partagés (types/) + helpers purs
+extensions/         # Extension navigateur (media bridge)
+tools/cpu-temp/ tools/active-url/
+docs/               # Guides (EN/FR) + journal de décisions
+.claude/            # Règles agent + mémoire projet versionnée
 ```
+
+Préférer les dossiers métier aux fichiers racine trop gros. Les `electron/*.ts` racine marqués `@deprecated` sont des shims de migration — importer depuis le module domaine.
 
 ## Publier une release
 
@@ -85,12 +96,21 @@ URLs consultées par l’app (dans l’ordre) :
 
 ## Ajouter un widget builtin
 
-1. Composant React dans `src/widgets/`
+1. Composant React dans `src/widgets/` (sous-dossier feature optionnel)
 2. Enregistrer dans `src/widgets/registry.tsx`
 3. Définition dans `electron/widgets/registry.ts`
-4. Nouvel IPC → `main.ts` + `preload.ts` + `src/vite-env.d.ts`
+4. Nouvel IPC → `electron/ipc/<domaine>Ipc.ts` + `electron/preload/<domaine>Api.ts` + `src/vite-env.d.ts` (câbler via `electron/ipc/index.ts` et `electron/preload.ts`)
 
-Services existants : `notion`, `system-stats`, `temp-daemon`, `activity-tracker` (voir `docs/fr/activity.md`).
+### Services
+
+| Id de service | Utilisé par les builtins | Notes |
+| --- | --- | --- |
+| `notion` | `calendar`, `tasks` | Fetch / édition Notion |
+| `activity-tracker` | `activity` | Activité locale + sessions focus |
+| `system-stats` | — (aucun builtin) | Réservé widgets externes / conso systray |
+| `temp-daemon` | — (aucun builtin) | Réservé conso helper température |
+
+L’ancien builtin `monitor` a été retiré ; ne pas supposer qu’un widget monitoring existe.
 
 Helpers natifs : `npm run build:helpers` (cpu-temp + active-url).
 
@@ -99,7 +119,8 @@ Helpers natifs : `npm run build:helpers` (cpu-temp + active-url).
 | Script | Rôle |
 | --- | --- |
 | `dev` | Mode développement |
-| `build` | Build production (+ cpu-temp) |
+| `build` | Build production (+ helpers) |
+| `test` | Vitest |
 | `app` | Lancer le dernier build |
 | `dist` | Packager l’installateur |
 | `shortcuts` | Recréer les raccourcis Bureau / menu Démarrer |

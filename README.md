@@ -19,13 +19,12 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" />
 </p>
 
-> Composable desktop widgets for Windows — enable only what you need (Notion calendar & tasks, system monitoring, activity tracking, …).
+> Composable desktop widgets for Windows — enable only what you need (Notion calendar & tasks, activity tracking, …).
 
 ## Features
 
-- **Catalog** — empty shell on first launch; enable Calendar, Tasks, Monitoring, Activity from the systray
+- **Catalog** — empty shell on first launch; enable Calendar, Tasks, Activity from the systray
 - **Notion** — week calendar + open tasks on the desktop (demo mode without a token)
-- **Monitoring** — CPU, RAM, optional temperature from the tray
 - **Activity** — local focus time by app/category (work, entertainment, …) with CSV/JSON export; optional [media extension](extensions/lattice-media/README.md) to suppress AFK while a video plays — [guide](docs/en/activity.md)
 - **Updates** — NSIS installer via GitHub Releases; silent check on startup + Settings buttons (app and external widgets)
 
@@ -75,6 +74,9 @@ Publish a release: tag `vX.Y.Z` → GitHub Actions workflow (see [docs/en/develo
 | Notion | [notion.md](docs/en/notion.md) | [notion.md](docs/fr/notion.md) |
 | Activity | [activity.md](docs/en/activity.md) | [activity.md](docs/fr/activity.md) |
 | Development | [development.md](docs/en/development.md) | [development.md](docs/fr/development.md) |
+| Decisions | [decisions.md](docs/en/decisions.md) | [decisions.md](docs/fr/decisions.md) |
+
+Agent constitution: [`CLAUDE.md`](CLAUDE.md) · rules & memory: [`.claude/`](.claude/).
 
 ## Author
 
