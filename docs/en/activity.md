@@ -26,6 +26,15 @@ Local time-tracking for Lattice with **structured software context** (browser do
 - **Focus under 3 s** — an app switch is committed only after **3 s** of stable focus (ignores Alt-Tab / tray flashes); AFK still switches immediately
 - Extensible `ignoredApps` in `rules.json` (default: `lattice`, `lattice-desk`)
 
+### Two dwell timers (do not confuse)
+
+| Timer | Constant / setting | Role |
+| --- | --- | --- |
+| **Segment dwell** | `FOCUS_DWELL_MS` = 3 s (`defaults.ts`) | Debounce normal app switches before writing a segment |
+| **Focus off-project dwell** | `focusOffProjectDwellSec` (default 8 s) | During a Notion focus session: how long off-allowlist before the interrupt window |
+
+Both are evaluated from `electron/activity/poll.ts`; the focus guard lives in `electron/focus/`.
+
 ## Privacy
 
 - **100 % local** under `%APPDATA%\lattice-desk\activity\`

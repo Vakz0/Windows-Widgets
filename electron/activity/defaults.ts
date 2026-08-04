@@ -2,9 +2,12 @@ import type { ActivityCategory, ActivityRules, ActivitySettings } from '../../sh
 
 export const POLL_MS = 2_000
 export const FLUSH_EVERY_POLLS = 15
-/** Focus must stay stable this long before we commit an app switch. */
+/**
+ * Segment dwell: focus must stay stable this long before we commit an app switch.
+ * Not the same as focusOffProjectDwellSec (interrupt delay during a focus session).
+ */
 export const FOCUS_DWELL_MS = 3_000
-/** Allowed range for focusOffProjectDwellSec setting. */
+/** Allowed range for focusOffProjectDwellSec (focus-session off-allowlist → interrupt). */
 export const FOCUS_OFF_PROJECT_DWELL_MIN_SEC = 3
 export const FOCUS_OFF_PROJECT_DWELL_MAX_SEC = 120
 

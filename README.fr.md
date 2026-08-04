@@ -76,7 +76,7 @@ Publier une version : tag `vX.Y.Z` → workflow GitHub Actions (voir [docs/fr/de
 | Développement | [development.md](docs/en/development.md) | [development.md](docs/fr/development.md) |
 | Décisions | [decisions.md](docs/en/decisions.md) | [decisions.md](docs/fr/decisions.md) |
 
-Constitution agent : [`CLAUDE.md`](CLAUDE.md) · règles & mémoire : [`.cursor/`](.cursor/).
+Règles & mémoire agent : [`.cursor/`](.cursor/) (constitution : `.cursor/rules/CURSOR.mdc`).
 
 ## Auteur
 

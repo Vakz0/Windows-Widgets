@@ -1,3 +1,8 @@
+/**
+ * Activity widget state: day summary, settings, and focus-session controls.
+ * Subscribes to `activity-updated` / focus events from main; mutations go
+ * through window.lattice (activity + focus APIs). Day navigation is local.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ActivityBrowserDetail,

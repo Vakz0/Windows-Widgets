@@ -6,9 +6,10 @@ import { CatalogWidget } from './CatalogWidget'
 import { FocusInterruptWidget } from './FocusInterruptWidget'
 
 /**
- * Map id → composant React.
- * Pour un nouveau widget builtin : ajouter l’entrée ici + dans electron/widgets/registry.ts
- * (sauf fenêtres internes comme focus-interrupt, hors catalogue).
+ * React half of the dual registry (see docs glossary).
+ * Builtin desktop widgets must also be listed in electron/widgets/registry.ts.
+ * Internal windows (catalog, focus-interrupt) are React-only — main opens them
+ * via windows/catalogWindow or focus/interruptWindow, not BUILTIN_WIDGETS.
  */
 const widgetComponents: Record<string, ComponentType> = {
   calendar: CalendarWidget,

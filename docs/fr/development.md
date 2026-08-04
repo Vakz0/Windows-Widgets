@@ -15,7 +15,7 @@ npm run dist     # Installateur NSIS → release/
 
 Config dev : copier `config.example.json` → `config.json` à la racine.
 
-Invariants agent / contributeur : [`CLAUDE.md`](../../CLAUDE.md) · décisions : [`docs/fr/decisions.md`](decisions.md).
+Invariants agent / contributeur : [`.cursor/rules/CURSOR.mdc`](../../.cursor/rules/CURSOR.mdc) · décisions : [`docs/fr/decisions.md`](decisions.md).
 
 ### Gates qualité
 
@@ -46,7 +46,31 @@ docs/               # Guides (EN/FR) + journal de décisions
 .githooks/          # Pre-commit optionnel (verify)
 ```
 
-Préférer les dossiers métier aux fichiers racine trop gros. Les `electron/*.ts` racine marqués `@deprecated` sont des shims de migration — importer depuis le module domaine.
+Préférer les dossiers métier aux fichiers racine trop gros. Les façades racine minces (`electron/activity.ts`, `electron/notion.ts`, `electron/preload.ts`) ne font que réexporter les domaines — **ne pas** recréer les shims `@deprecated` supprimés (D21).
+
+## Glossaire
+
+| Terme | Sens |
+| --- | --- |
+| **Catalog shell** | Install fraîche sans widgets desktop ; on les active depuis le Catalogue (D01). |
+| **enabled** | Widget activé en config / peut démarrer ses services. ≠ fenêtre visible. |
+| **Show/hide tray** | Cache ou montre une fenêtre desktop déjà enabled ; ne bascule pas `enabled`. |
+| **Widget builtin** | Livré dans l’app : `calendar`, `tasks`, `activity`. |
+| **Fenêtre interne** | Hors catalogue utilisateur : `catalog` (shell UI), `focus-interrupt` (modale garde). |
+| **Dual registry** | Map React `src/widgets/registry.tsx` + defs main `electron/widgets/registry.ts`. Les internes ne sont pas forcément dans les deux. |
+| **Service** | Dépendance runtime déclarée (`notion`, `activity-tracker`, `system-stats`, `temp-daemon`). Démarrée seulement si un widget **enabled** en a besoin (D06). |
+| **`system-stats` / `temp-daemon`** | Plus de builtin après retrait Monitor (D07). Conservés pour widgets **externes** et aides systray ; sans consommateur, l’élévation temp reste gated. |
+| **`window.lattice`** | Seul pont renderer↔main (preload). Le renderer n’importe jamais `electron/`. |
+| **Poll activité** | Boucle ~2 s foreground-only dans `electron/activity/poll.ts` (D08). |
+| **Dwell segment** | `FOCUS_DWELL_MS` (3 s) : focus stable avant de committer un changement d’app. |
+| **Dwell hors-projet** | `focusOffProjectDwellSec` (défaut 8 s) : hors allowlist avant la fenêtre d’interruption. Horloge distincte du dwell segment. |
+| **Media bridge** | HTTP localhost + extension navigateur optionnelle (playback / AFK / visionnage) (D10). |
+| **Demo mode** | Token Notion absent/placeholder → store démo local (D13). |
+| **Power mode** | active / idle / sleep → intervalles refresh Notion & stats (D20). |
+| **Widget externe** | Zip + `manifest.json` sous userData ; catalogue distant optionnel (D11). |
+| **PublicConfig** | Config envoyée au renderer sans secrets (`bootstrap/publicConfig.ts`). |
+| **Confinement chemins** | Fichiers activity/focus via `resolveWithin` / `assertWithin` (D15). |
+| **`startFocusForTask`** | Entrée UI unique pour démarrer une session focus Notion — ne pas dupliquer le payload IPC (D22). |
 
 ## Publier une release
 
@@ -117,10 +141,10 @@ URLs consultées par l’app (dans l’ordre) :
 | --- | --- | --- |
 | `notion` | `calendar`, `tasks` | Fetch / édition Notion |
 | `activity-tracker` | `activity` | Activité locale + sessions focus |
-| `system-stats` | — (aucun builtin) | Réservé widgets externes / conso systray |
-| `temp-daemon` | — (aucun builtin) | Réservé conso helper température |
+| `system-stats` | — (aucun builtin) | Widgets externes + refresh CPU/RAM systray si déclaré |
+| `temp-daemon` | — (aucun builtin) | Widgets externes ; élévation temp systray seulement si un widget enabled le déclare |
 
-L’ancien builtin `monitor` a été retiré ; ne pas supposer qu’un widget monitoring existe.
+L’ancien builtin `monitor` a été retiré (D07). Garder ces ids de service est **volontaire** — pas un retrait à moitié.
 
 Helpers natifs : `npm run build:helpers` (cpu-temp + active-url).
 

@@ -1,3 +1,12 @@
+/**
+ * Enable/disable widgets and keep runtime services in sync.
+ *
+ * Why this exists: `enabled` in config is not “window visible”. Enabling a
+ * desktop widget creates its BrowserWindow; popup widgets stay lazy until a
+ * tray click. `recomputeServices` starts/stops Notion fetch, activity tracker,
+ * and temp-daemon based on what enabled widgets declare — so orphans like
+ * system-stats/temp-daemon only run when an (external) consumer needs them.
+ */
 import type { BrowserWindow } from 'electron'
 import type {
   ActivityDaySummary,

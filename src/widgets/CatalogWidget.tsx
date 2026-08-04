@@ -1,3 +1,11 @@
+/**
+ * Catalog / Settings shell window (internal — not a desktop Catalog entry).
+ *
+ * Why: product opens as an empty shell (D01). This UI lists builtin + external
+ * widgets, toggles `enabled` via IPC, and hosts Notion/update settings. It is
+ * registered in the React registry only; main creates it via catalogWindow,
+ * not electron/widgets/registry builtins.
+ */
 import { useEffect, useState, useTransition } from 'react'
 import type {
   CatalogWidgetInfo,

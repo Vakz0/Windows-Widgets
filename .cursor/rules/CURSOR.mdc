@@ -3,7 +3,7 @@ alwaysApply: true
 ---
 # Lattice — notes agent
 
-Instructions projet partagées (versionnées). Préférences personnelles : `CLAUDE.local.md` (gitignored).
+Instructions projet partagées (versionnées). Préférences personnelles : Cursor User Rules (hors repo).
 Règles path-scopées : `.cursor/rules/`. Mémoire projet : `.cursor/memory/`.
 Décisions : `@docs/en/decisions.md`.
 

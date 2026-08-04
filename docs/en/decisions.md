@@ -29,9 +29,9 @@ Short log of lasting choices. Add a row when you change an invariant; do not rew
 | D21 | 2026-08-04 | **Remove unused `@deprecated` electron root shims**; import domains directly. | Shims had zero remaining imports. | Active |
 | D22 | 2026-08-04 | **Shared pure helpers** `shared/dates.ts` + `shared/errors.ts`; UI focus start via `startFocusForTask`. | Kill date/error/start-focus duplication. | Active |
 | D23 | 2026-08-04 | **Design tokens** renamed `--monitor-*` → `--surface` / `--glow-*` / `soft-pulse` (Monitor widget gone). | Naming matched a deleted feature. | Active |
-| D24 | 2026-08-04 | **electron-builder 26**; Electron major (33→43) deferred. | Clear critical `tar`/builder advisories without a Chromium jump in the same change. | Active |
+| D25 | 2026-08-04 | **Single agent constitution** — `.cursor/rules/CURSOR.mdc` only; delete root `CLAUDE.md`. | End dual source of truth after Cursor migration. | Active |
 
 ## How to add an entry
 
 1. Next free `Dxx` id, today’s date, one-line decision, one-line why, `Active` / `Superseded by Dyy` / `Temporary`.
-2. If a rule becomes day-to-day guidance for agents, mirror it in `CLAUDE.md` or `.cursor/rules/`.
+2. If a rule becomes day-to-day guidance for agents, mirror it in `.cursor/rules/` (especially `CURSOR.mdc` for always-on invariants).

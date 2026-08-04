@@ -1,11 +1,12 @@
 # Learnings
 
-Append dated notes. Promote durable rules to `CLAUDE.md` / `.cursor/rules/` / `docs/*/decisions.md`.
+Append dated notes. Promote durable rules to `.cursor/rules/` / `docs/*/decisions.md`.
 
 ## 2026-08-04
 
 - Documentation debt audit: architecture pages were deleted in `76e0317` (“slim down docs”); restored as a short decisions log + agent constitution instead of a long architecture doc.
-- Constitution lives in `CLAUDE.md` + `.cursor/rules/CURSOR.mdc` (keep in sync).
+- Constitution is **only** `.cursor/rules/CURSOR.mdc` — `CLAUDE.md` removed (no dual source of truth).
 - Mid-refactor: import `electron/focus`, `electron/activity/context`, `electron/activity/mediaBridge` (deprecated root shims removed).
 - Builtin Monitor widget is gone; do not reintroduce it without a new decision entry. `system-stats` / `temp-daemon` remain valid **service ids** for external widgets.
 - Technical debt pass: `npm run verify`, CI on PR, shared `dates`/`errors`, `startFocusForTask`, Notion `buildPropertyWrite` tests, design tokens renamed off `--monitor-*`, electron-builder 26.
+- Cognitive debt remédiation: development glossary (EN/FR); D21 shim wording fixed; two dwell clocks called out in activity.md + `poll.ts` / `defaults.ts`; WHY headers on `lifecycle`, `CatalogWidget`, `useActivityWidget`, `system.ts`, dual registry.

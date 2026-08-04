@@ -26,6 +26,15 @@ Widget Lattice de suivi du temps passé sur le PC, avec **contexte logiciel** (d
 - **Focus < 3 s** — un changement d’app n’est validé qu’après **3 s** de focus stable (ignore Alt-Tab / flash systray) ; l’AFK reste immédiat
 - Liste extensible `ignoredApps` dans `rules.json` (défaut : `lattice`, `lattice-desk`)
 
+### Deux horloges de dwell (ne pas confondre)
+
+| Horloge | Constante / réglage | Rôle |
+| --- | --- | --- |
+| **Dwell segment** | `FOCUS_DWELL_MS` = 3 s (`defaults.ts`) | Debounce des changements d’app avant d’écrire un segment |
+| **Dwell hors-projet** | `focusOffProjectDwellSec` (défaut 8 s) | Pendant une session focus Notion : durée hors allowlist avant la fenêtre d’interruption |
+
+Les deux sont évaluées depuis `electron/activity/poll.ts` ; la garde focus vit dans `electron/focus/`.
+
 ## Vie privée
 
 - **100 % local** dans `%APPDATA%\lattice-desk\activity\`

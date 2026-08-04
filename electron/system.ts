@@ -1,3 +1,10 @@
+/**
+ * CPU/RAM sampling + optional .NET cpu-temp daemon.
+ *
+ * Consumed when an enabled widget declares `system-stats` / `temp-daemon`
+ * (no builtin after Monitor removal — D07), or via tray helpers that gate on
+ * hasService('temp-daemon'). Safe to leave idle with zero consumers.
+ */
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs'

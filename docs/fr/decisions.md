@@ -29,9 +29,9 @@ Journal court des choix durables. Ajouter une ligne quand un invariant change ; 
 | D21 | 2026-08-04 | **Suppression des shims `@deprecated` racine electron** inutilisés ; imports domaine directs. | Plus aucun import restant. | Actif |
 | D22 | 2026-08-04 | **Helpers purs partagés** `shared/dates.ts` + `shared/errors.ts` ; start focus UI via `startFocusForTask`. | Fin de la duplication dates/erreurs/start-focus. | Actif |
 | D23 | 2026-08-04 | **Tokens design** `--monitor-*` → `--surface` / `--glow-*` / `soft-pulse` (widget Monitor retiré). | Naming lié à une feature morte. | Actif |
-| D24 | 2026-08-04 | **electron-builder 26** ; upgrade majeur Electron (33→43) reporté. | Lever les advisories `tar`/builder sans saut Chromium dans le même changement. | Actif |
+| D25 | 2026-08-04 | **Constitution agent unique** — `.cursor/rules/CURSOR.mdc` seul ; suppression de `CLAUDE.md` racine. | Fin du double source of truth après migration Cursor. | Actif |
 
 ## Ajouter une entrée
 
 1. Prochain id `Dxx`, date du jour, décision en une ligne, pourquoi en une ligne, `Actif` / `Remplacé par Dyy` / `Temporaire`.
-2. Si la règle devient un guide quotidien pour les agents, la refléter dans `CLAUDE.md` ou `.cursor/rules/`.
+2. Si la règle devient un guide quotidien pour les agents, la refléter dans `.cursor/rules/` (surtout `CURSOR.mdc` pour les invariants always-on).

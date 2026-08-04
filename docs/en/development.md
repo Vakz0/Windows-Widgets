@@ -15,7 +15,7 @@ npm run dist     # NSIS installer → release/
 
 Dev config: copy `config.example.json` → `config.json` at the repo root.
 
-Agent / contributor invariants: [`CLAUDE.md`](../../CLAUDE.md) · decisions: [`docs/en/decisions.md`](decisions.md).
+Agent / contributor invariants: [`.cursor/rules/CURSOR.mdc`](../../.cursor/rules/CURSOR.mdc) · decisions: [`docs/en/decisions.md`](decisions.md).
 
 ### Quality gates
 
@@ -46,7 +46,31 @@ docs/               # Guides (EN/FR) + decisions log
 .githooks/          # Optional pre-commit (verify)
 ```
 
-Prefer domain folders over growing root files. Root `electron/*.ts` files marked `@deprecated` are migration shims — import from the domain module instead.
+Prefer domain folders over growing root files. Thin root façades (`electron/activity.ts`, `electron/notion.ts`, `electron/preload.ts`) only re-export domains — do **not** recreate deleted `@deprecated` shims (D21).
+
+## Glossary
+
+| Term | Meaning |
+| --- | --- |
+| **Catalog shell** | Fresh install opens no desktop widgets; enable them from Catalog (D01). |
+| **enabled** | Widget is on in config / may start its services. Not the same as the window being visible. |
+| **Tray show/hide** | Hides or shows an already-enabled desktop window; does not flip `enabled`. |
+| **Builtin widget** | Shipped in-app: `calendar`, `tasks`, `activity`. |
+| **Internal window** | Not in the user Catalog: `catalog` (shell UI), `focus-interrupt` (guard modal). |
+| **Dual registry** | React map in `src/widgets/registry.tsx` + main defs in `electron/widgets/registry.ts`. Internals are React-only or window helpers, not both. |
+| **Service** | Runtime dep declared on a widget (`notion`, `activity-tracker`, `system-stats`, `temp-daemon`). Started only while some **enabled** widget needs it (D06). |
+| **`system-stats` / `temp-daemon`** | No builtin after Monitor removal (D07). Kept for **external** widgets and tray helpers; without a consumer, temp elevate stays gated off. |
+| **`window.lattice`** | Only renderer↔main bridge (preload `contextBridge`). Renderer never imports `electron/`. |
+| **Activity poll** | Foreground-only ~2 s loop in `electron/activity/poll.ts` (D08). |
+| **Segment dwell** | `FOCUS_DWELL_MS` (3 s): stable focus before committing an app-switch segment. |
+| **Focus off-project dwell** | `focusOffProjectDwellSec` (default 8 s): how long off-allowlist before the interrupt window. Different clock from segment dwell. |
+| **Media bridge** | Localhost HTTP + optional browser extension for playback / AFK / watch time (D10). |
+| **Demo mode** | Notion token missing/placeholder → local demo store (D13). |
+| **Power mode** | active / idle / sleep → Notion & stats refresh intervals (D20). |
+| **External widget** | Zip + `manifest.json` under userData; optional remote catalog (D11). |
+| **PublicConfig** | Config sent to renderer with secrets stripped (`bootstrap/publicConfig.ts`). |
+| **Path confinement** | Activity/focus files via `resolveWithin` / `assertWithin` (D15). |
+| **`startFocusForTask`** | Single UI entry to start a Notion focus session — do not duplicate the IPC payload (D22). |
 
 ## Publish a release
 
@@ -117,10 +141,10 @@ URLs checked by the app (in order):
 | --- | --- | --- |
 | `notion` | `calendar`, `tasks` | Notion fetch/edit |
 | `activity-tracker` | `activity` | Local activity + focus sessions |
-| `system-stats` | — (no builtin) | Reserved for external / tray stats consumers |
-| `temp-daemon` | — (no builtin) | Reserved for temperature helper consumers |
+| `system-stats` | — (no builtin) | External widgets + optional tray CPU/RAM refresh when declared |
+| `temp-daemon` | — (no builtin) | External widgets; tray “elevate temp” only if some enabled widget declares it |
 
-The former `monitor` builtin was removed; do not assume a desktop monitor widget exists.
+The former `monitor` builtin was removed (D07). Keeping these service ids is intentional — not a half-removal.
 
 Native helpers: `npm run build:helpers` (cpu-temp + active-url).
 

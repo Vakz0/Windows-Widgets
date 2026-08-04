@@ -15,5 +15,4 @@ config.json
 .DS_Store
 Thumbs.db
 *.local
-CLAUDE.local.md
 

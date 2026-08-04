@@ -3,13 +3,14 @@ paths:
   - "docs/**/*.md"
   - "README.md"
   - "README.fr.md"
-  - "CLAUDE.md"
+  - ".cursor/rules/**/*.mdc"
+  - ".cursor/memory/**/*.mdc"
 ---
 
 # Documentation
 
 - Keep EN and FR guides in sync when changing behavior (`docs/en/*` ↔ `docs/fr/*`).
-- Architectural invariants → `docs/*/decisions.md` (new `Dxx` row), then mirror day-to-day rules in `CLAUDE.md` / `.cursor/rules/` if agents must follow them every session.
+- Architectural invariants → `docs/*/decisions.md` (new `Dxx` row), then mirror day-to-day rules in `.cursor/rules/` (especially `CURSOR.mdc`) if agents must follow them every session.
 - Do not resurrect long architecture/brand pages; prefer short guides + the decisions log.
 - Agent learnings / blockers → `.cursor/memory/` (dated append).
 - Never document secrets; point to `config.example.json` and userData paths only.

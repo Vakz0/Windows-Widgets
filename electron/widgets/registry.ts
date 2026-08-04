@@ -1,3 +1,8 @@
+/**
+ * Main-process widget definitions (builtins + discovered externals).
+ * Pair with src/widgets/registry.tsx for React components. Catalog and
+ * focus-interrupt are opened by dedicated window helpers — not listed here.
+ */
 import type { WidgetDefinition } from '../../shared/widget'
 import { discoverExternalWidgets } from './discoverExternal'
 

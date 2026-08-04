@@ -1,3 +1,14 @@
+/**
+ * Foreground activity poll (~2 s): idle / FG window / URL / classify → segments.
+ *
+ * Two independent dwell clocks (do not merge):
+ * - FOCUS_DWELL_MS (3 s): debounce app switches before committing `openSegment`
+ *   (pendingSwitch). AFK bypasses this and switches immediately.
+ * - settings.focusOffProjectDwellSec (default 8 s): during a Notion focus session,
+ *   how long off-allowlist before `evaluateFocusGuard` opens the interrupt window.
+ *
+ * See docs/en/activity.md “Two dwell timers”.
+ */
 import { createHash, randomUUID } from 'node:crypto'
 import { powerMonitor } from 'electron'
 import type {
