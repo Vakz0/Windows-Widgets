@@ -24,7 +24,6 @@ export type PowerMode = 'active' | 'idle' | 'sleep'
 export interface PowerModeDeps {
   getConfig: () => AppConfig
   windows: Partial<Record<string, BrowserWindow>>
-  getMonitorVisible: () => boolean
   getSleeping: () => boolean
   setSleeping: (sleeping: boolean) => void
   hasService: (service: WidgetServiceId) => boolean
@@ -60,7 +59,7 @@ export function createPowerModeController(deps: PowerModeDeps) {
     } catch (err) {
       console.debug('computePowerMode: idle time ignored', err)
     }
-    if (deps.getMonitorVisible() || popupWidgetVisible()) return 'active'
+    if (popupWidgetVisible()) return 'active'
     if (desktopWidgetsVisible()) return 'idle'
     return 'sleep'
   }
@@ -100,7 +99,7 @@ export function createPowerModeController(deps: PowerModeDeps) {
       }, notionMs)
     }
 
-    // Light tray sampling always (tooltip); monitor push gated in refreshStats
+    // Light tray sampling always (tooltip)
     const statsMs = statsIntervalMs()
     if (statsMs > 0) {
       statsTimer = setInterval(() => {
@@ -127,7 +126,7 @@ export function createPowerModeController(deps: PowerModeDeps) {
       applyPowerMode(true)
       handleActivityResume()
       if (deps.hasService('notion')) void deps.refreshNotion(true)
-      void deps.refreshStats(deps.getMonitorVisible())
+      void deps.refreshStats(false)
     }
 
     powerMonitor.on('suspend', enterSleep)

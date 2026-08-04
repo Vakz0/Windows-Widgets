@@ -11,7 +11,7 @@ import {
   startFocusSession,
   stopFocusSession,
   updateFocusAllowlist,
-} from '../focusSession'
+} from '../focus'
 import type {
   FocusAllowlist,
   ResolveFocusInterruptPayload,

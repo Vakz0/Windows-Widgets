@@ -4,7 +4,7 @@ import type {
   NotionTask,
   ProjectSourceConfig,
 } from '../../shared/types'
-import { extractDatabaseId, extractPageId } from '../config'
+import { extractDatabaseId, extractPageId } from '../../shared/notionIds'
 import { getDemoTasks } from './demo'
 import { type ParseContext, parsePage, richTextArrayToPlain, sortTasks } from './parse'
 

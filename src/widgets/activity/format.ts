@@ -1,4 +1,8 @@
 import type { ActivityCategory, ActivityDaySummary } from '../../vite-env'
+import { shiftDate, todayKey } from '../../../shared/dates'
+import { errMessage } from '../../../shared/errors'
+
+export { todayKey, shiftDate, errMessage }
 
 export const CATEGORY_ORDER: ActivityCategory[] = [
   'work',
@@ -33,23 +37,6 @@ export const AFK_PRESETS = [
   { sec: 300, label: '5 min' },
   { sec: 600, label: '10 min' },
 ] as const
-
-export function todayKey(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-export function shiftDate(date: string, deltaDays: number): string {
-  const d = new Date(`${date}T12:00:00`)
-  d.setDate(d.getDate() + deltaDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 export function formatDayTitle(date: string, today: string): string {
   if (date === today) return 'Aujourd’hui'
@@ -110,8 +97,3 @@ export function emptySummary(date = todayKey()): ActivityDaySummary {
   }
 }
 
-export function errMessage(err: unknown, fallback: string): string {
-  if (err instanceof Error && err.message) return err.message
-  if (typeof err === 'string' && err) return err
-  return fallback
-}

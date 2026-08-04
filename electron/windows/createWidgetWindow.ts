@@ -17,8 +17,6 @@ export interface CreateWidgetWindowDeps {
   getConfig: () => AppConfig
   setConfig: (config: AppConfig) => void
   windows: Partial<Record<string, BrowserWindow>>
-  getMonitorVisible: () => boolean
-  setMonitorVisible: (visible: boolean) => void
   applyPowerMode: (force?: boolean) => void
   hasService: (service: WidgetServiceId) => boolean
   refreshStats: (forceTemp?: boolean) => Promise<SystemStats>
@@ -63,6 +61,7 @@ export function createWidgetWindowController(deps: CreateWidgetWindowDeps) {
 
     const width = isPopup ? def.defaultBounds.width : (saved?.width ?? def.defaultBounds.width)
     const height = isPopup ? def.defaultBounds.height : (saved?.height ?? def.defaultBounds.height)
+
     let x = isPopup ? undefined : saved?.x
     let y = isPopup ? undefined : saved?.y
 
@@ -125,7 +124,6 @@ export function createWidgetWindowController(deps: CreateWidgetWindowDeps) {
     win.on('resized', () => schedulePersistBounds(id, win))
     win.on('show', () => {
       if (isPopup) {
-        deps.setMonitorVisible(id === 'monitor' ? true : deps.getMonitorVisible())
         deps.applyPowerMode(true)
         if (deps.hasService('system-stats')) void deps.refreshStats(true)
       } else {
@@ -133,12 +131,10 @@ export function createWidgetWindowController(deps: CreateWidgetWindowDeps) {
       }
     })
     win.on('hide', () => {
-      if (id === 'monitor') deps.setMonitorVisible(false)
       deps.applyPowerMode()
     })
     win.on('closed', () => {
       if (deps.windows[id] === win) delete deps.windows[id]
-      if (id === 'monitor') deps.setMonitorVisible(false)
     })
 
     if (isPopup) {
@@ -149,44 +145,6 @@ export function createWidgetWindowController(deps: CreateWidgetWindowDeps) {
 
     deps.windows[id] = win
     return win
-  }
-
-  function ensureMonitorWindow(): BrowserWindow {
-    let win = deps.windows.monitor
-    if (!win || win.isDestroyed()) {
-      win = createWidgetWindow('monitor', { show: false })
-    }
-    return win
-  }
-
-  function toggleMonitor(): void {
-    if (!deps.isEnabled('monitor')) return
-
-    const win = ensureMonitorWindow()
-
-    if (win.isVisible()) {
-      win.hide()
-      return
-    }
-
-    const display = screen.getPrimaryDisplay().workArea
-    const cursor = screen.getCursorScreenPoint()
-    const [width, height] = win.getSize()
-    let x = cursor.x - Math.floor(width / 2)
-    let y = cursor.y - height - 16
-    x = Math.min(Math.max(display.x + 8, x), display.x + display.width - width - 8)
-    y = Math.min(Math.max(display.y + 8, y), display.y + display.height - height - 8)
-    win.setPosition(x, y)
-
-    const show = () => {
-      win.show()
-      win.focus()
-    }
-    if (win.webContents.isLoading()) {
-      win.webContents.once('did-finish-load', show)
-    } else {
-      show()
-    }
   }
 
   function isWidgetVisible(id: string): boolean {
@@ -219,8 +177,6 @@ export function createWidgetWindowController(deps: CreateWidgetWindowDeps) {
 
   return {
     createWidgetWindow,
-    ensureMonitorWindow,
-    toggleMonitor,
     isWidgetVisible,
     showWidget,
     hideWidget,

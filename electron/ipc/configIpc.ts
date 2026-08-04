@@ -4,7 +4,6 @@ import type { IpcDeps } from './types'
 
 export function registerConfigIpc(deps: IpcDeps): void {
   ipcMain.handle('get-config', () => deps.toPublicConfig())
-  ipcMain.handle('get-notion-settings', () => deps.toPublicConfig())
   ipcMain.handle(
     'update-public-settings',
     async (

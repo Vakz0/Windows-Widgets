@@ -5,8 +5,6 @@ import type {
   ActivityCorrectionScope,
   ActivityDaySummary,
   ActivitySettings,
-  FocusJournalEntry,
-  FocusSession,
 } from '../../vite-env'
 import {
   AFK_PRESETS,
@@ -17,6 +15,7 @@ import {
   shiftDate,
   todayKey,
 } from './format'
+import { useFocusSessionControls } from './useFocusSessionControls'
 
 export function useActivityWidget() {
   const [summary, setSummary] = useState<ActivityDaySummary | null>(null)
@@ -27,12 +26,6 @@ export function useActivityWidget() {
   const [hintError, setHintError] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [focusSession, setFocusSession] = useState<FocusSession | null>(null)
-  const [journal, setJournal] = useState<FocusJournalEntry[]>([])
-  const [allowApps, setAllowApps] = useState('')
-  const [allowDomains, setAllowDomains] = useState('')
-  const [allowProjects, setAllowProjects] = useState('')
-  const [allowUrls, setAllowUrls] = useState('')
   const viewDateRef = useRef(viewDate)
   viewDateRef.current = viewDate
 
@@ -41,16 +34,13 @@ export function useActivityWidget() {
     setHintError(isError)
   }
 
-  function syncAllowlistFields(session: FocusSession | null) {
-    setAllowApps((session?.allowlist.apps ?? []).join(', '))
-    setAllowDomains((session?.allowlist.domains ?? []).join(', '))
-    setAllowProjects((session?.allowlist.ideProjects ?? []).join(', '))
-    setAllowUrls((session?.allowlist.urls ?? []).join(', '))
-  }
-
-  function loadJournal(date: string) {
-    void window.lattice.getFocusJournal(date).then(setJournal).catch(() => setJournal([]))
-  }
+  const focus = useFocusSessionControls({
+    viewDate,
+    viewDateRef,
+    setBusy,
+    setStatus,
+    setSummary,
+  })
 
   useEffect(() => {
     let alive = true
@@ -66,22 +56,12 @@ export function useActivityWidget() {
         if (alive) setSettings(s)
       })
       .catch(() => undefined)
-    void window.lattice
-      .getFocusSession()
-      .then((s) => {
-        if (!alive) return
-        setFocusSession(s)
-        syncAllowlistFields(s)
-      })
-      .catch(() => undefined)
-    loadJournal(viewDate)
     const offActivity = window.lattice.onActivityUpdated((s) => {
       if (viewDateRef.current === todayKey()) {
         setSummary(s)
       }
       if (s.focusSession !== undefined) {
-        setFocusSession(s.focusSession)
-        syncAllowlistFields(s.focusSession)
+        focus.ingestFromActivitySummary(s.focusSession)
       }
       setSettings((prev) =>
         prev
@@ -96,15 +76,9 @@ export function useActivityWidget() {
             },
       )
     })
-    const offFocus = window.lattice.onFocusSessionUpdated((s) => {
-      setFocusSession(s)
-      syncAllowlistFields(s)
-      loadJournal(viewDateRef.current)
-    })
     return () => {
       alive = false
       offActivity()
-      offFocus()
     }
   }, [])
 
@@ -116,7 +90,6 @@ export function useActivityWidget() {
         if (alive) setSummary(s)
       })
       .catch(() => undefined)
-    loadJournal(viewDate)
     return () => {
       alive = false
     }
@@ -320,62 +293,7 @@ export function useActivityWidget() {
     }
   }
 
-  async function focusPauseToggle() {
-    if (!focusSession) return
-    setBusy(true)
-    try {
-      const next =
-        focusSession.status === 'paused'
-          ? await window.lattice.resumeFocusSession()
-          : await window.lattice.pauseFocusSession()
-      setFocusSession(next)
-      syncAllowlistFields(next)
-      const s = await window.lattice.getActivitySummary(viewDate)
-      setSummary(s)
-    } catch (err) {
-      setStatus(errMessage(err, 'Session focus impossible.'), true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function focusStop() {
-    setBusy(true)
-    try {
-      await window.lattice.stopFocusSession()
-      setFocusSession(null)
-      syncAllowlistFields(null)
-      const s = await window.lattice.getActivitySummary(viewDate)
-      setSummary(s)
-      setStatus('Session focus terminée.')
-    } catch (err) {
-      setStatus(errMessage(err, 'Arrêt de session impossible.'), true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function saveAllowlist() {
-    if (!focusSession) return
-    setBusy(true)
-    try {
-      const next = await window.lattice.updateFocusAllowlist({
-        apps: allowApps.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-        domains: allowDomains.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-        ideProjects: allowProjects.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-        urls: allowUrls.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean),
-      })
-      setFocusSession(next)
-      syncAllowlistFields(next)
-      setStatus('Allowlist mise à jour.')
-    } catch (err) {
-      setStatus(errMessage(err, 'Allowlist impossible à enregistrer.'), true)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const session = focusSession ?? data.focusSession
+  const session = focus.focusSession ?? data.focusSession
 
   const afkLabel =
     AFK_PRESETS.find((p) => p.sec === settings?.idleThresholdSec)?.label ??
@@ -390,21 +308,21 @@ export function useActivityWidget() {
     hintError,
     confirmClear,
     optionsOpen,
-    journal,
-    allowApps,
-    allowDomains,
-    allowProjects,
-    allowUrls,
+    journal: focus.journal,
+    allowApps: focus.allowApps,
+    allowDomains: focus.allowDomains,
+    allowProjects: focus.allowProjects,
+    allowUrls: focus.allowUrls,
     isToday,
     activeMs,
     categoryRows,
     qualityHint,
     session,
     afkLabel,
-    setAllowApps,
-    setAllowDomains,
-    setAllowProjects,
-    setAllowUrls,
+    setAllowApps: focus.setAllowApps,
+    setAllowDomains: focus.setAllowDomains,
+    setAllowProjects: focus.setAllowProjects,
+    setAllowUrls: focus.setAllowUrls,
     setOptionsOpen,
     setConfirmClear,
     setStatus,
@@ -419,8 +337,8 @@ export function useActivityWidget() {
     doClear,
     correct,
     reloadRules,
-    focusPauseToggle,
-    focusStop,
-    saveAllowlist,
+    focusPauseToggle: focus.focusPauseToggle,
+    focusStop: focus.focusStop,
+    saveAllowlist: focus.saveAllowlist,
   }
 }

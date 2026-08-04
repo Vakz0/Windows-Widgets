@@ -25,17 +25,6 @@ const BUILTIN_WIDGETS: WidgetDefinition[] = [
     windowOptions: { resizable: true, alwaysOnTop: false },
   },
   {
-    id: 'monitor',
-    label: 'Monitoring',
-    description:
-      'Jauges CPU, RAM et température. Pop-up always-on-top depuis le systray (clic gauche).',
-    source: 'builtin',
-    placement: 'popup',
-    services: ['system-stats', 'temp-daemon'],
-    defaultBounds: { width: 360, height: 300 },
-    windowOptions: { resizable: false, alwaysOnTop: true },
-  },
-  {
     id: 'activity',
     label: 'Activité',
     description:

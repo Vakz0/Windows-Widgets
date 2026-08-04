@@ -17,6 +17,15 @@ Dev config: copy `config.example.json` → `config.json` at the repo root.
 
 Agent / contributor invariants: [`CLAUDE.md`](../../CLAUDE.md) · decisions: [`docs/en/decisions.md`](decisions.md).
 
+### Quality gates
+
+```bash
+npm run verify   # vitest + tsc (also runs in CI on PR/push and before release)
+npm run build    # helpers + tsc + vite
+```
+
+Optional local pre-commit: `git config core.hooksPath .githooks` (runs `npm run verify`).
+
 ## Layout
 
 ```
@@ -33,7 +42,8 @@ shared/             # Shared types (types/) + pure helpers
 extensions/         # Browser extension (media bridge)
 tools/cpu-temp/ tools/active-url/
 docs/               # Guides (EN/FR) + decisions log
-.claude/            # Agent rules + versioned project memory
+.cursor/            # Cursor rules + versioned project memory
+.githooks/          # Optional pre-commit (verify)
 ```
 
 Prefer domain folders over growing root files. Root `electron/*.ts` files marked `@deprecated` are migration shims — import from the domain module instead.

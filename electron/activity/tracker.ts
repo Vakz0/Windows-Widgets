@@ -6,7 +6,7 @@ import {
   ensureFocusSessionLoaded,
   getFocusSession,
   stopFocusSession,
-} from '../focusSession'
+} from '../focus'
 import {
   invalidateWatchCache,
   isMediaKeepAwakeActive,
@@ -14,8 +14,8 @@ import {
   setMediaWatchListener,
   startMediaBridge,
   stopMediaBridge,
-} from '../activityMediaBridge'
-import { isActiveUrlHelperAvailable } from '../activityContext'
+} from './mediaBridge'
+import { isActiveUrlHelperAvailable } from './context'
 import { buildSummary, withPendingCurrent, type SummaryDeps } from './aggregator'
 import { CATEGORIES, FOCUS_OFF_PROJECT_DWELL_MAX_SEC, FOCUS_OFF_PROJECT_DWELL_MIN_SEC, POLL_MS } from './defaults'
 import { setExportHooks } from './export'

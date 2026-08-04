@@ -1,5 +1,10 @@
 import type { BrowserWindow } from 'electron'
-import type { ActivityDaySummary, AppConfig, CatalogWidgetInfo, NotionTask } from '../../shared/types'
+import type {
+  ActivityDaySummary,
+  AppConfig,
+  CatalogWidgetInfo,
+  NotionTask,
+} from '../../shared/types'
 import type { WidgetServiceId } from '../../shared/widget'
 import {
   isActivityTrackerRunning,
@@ -23,7 +28,6 @@ export interface WidgetLifecycleDeps {
   isEnabled: (id: string) => boolean
   hasService: (service: WidgetServiceId) => boolean
   createWidgetWindow: (id: string, opts?: { show?: boolean }) => BrowserWindow
-  setMonitorVisible: (visible: boolean) => void
   getTasksCache: () => NotionTask[]
   setTasksCache: (tasks: NotionTask[]) => void
   refreshNotion: (force?: boolean) => Promise<NotionTask[]>
@@ -109,7 +113,6 @@ export function createWidgetLifecycle(deps: WidgetLifecycleDeps) {
       win.destroy()
     }
     delete deps.windows[id]
-    if (id === 'monitor') deps.setMonitorVisible(false)
 
     recomputeServices()
     broadcastWidgetsChanged()

@@ -1,0 +1,15 @@
+# Project memory
+
+Persistent notes for agents and humans working on Lattice.
+
+| File | Use |
+| --- | --- |
+| [LEARNINGS.mdc](LEARNINGS.mdc) | Dated insights, corrections, “do this next time” |
+| [BLOCKERS.mdc](BLOCKERS.mdc) | Open blockers; clear or date when resolved |
+
+**Rules**
+
+- Append only with `YYYY-MM-DD` and a short factual note.
+- Prefer promoting a recurring learning into `CLAUDE.md`, `.cursor/rules/`, or `docs/*/decisions.md`.
+- Do not store secrets, tokens, or personal machine paths with credentials.
+- This folder is the **shared, versioned** project memory (Cursor). Claude Code may also keep per-machine auto memory under `~/.claude/projects/…/memory/`.

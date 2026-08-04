@@ -9,8 +9,8 @@ import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import type { ActivityCategory, ActivitySiteBreakdown } from '../shared/types'
-import { categoryFromDomain, normalizeDomain } from './activityContext'
+import type { ActivityCategory, ActivitySiteBreakdown } from '../../shared/types'
+import { categoryFromDomain, normalizeDomain } from './context'
 import {
   activityDir,
   bridgeMetaPath,
@@ -20,7 +20,7 @@ import {
   watchPath,
   assertWithin,
   resolveWithin,
-} from './activity/paths'
+} from './paths'
 
 const MEDIA_BRIDGE_PORT = 17_384
 const MEDIA_BRIDGE_HOST = '127.0.0.1'

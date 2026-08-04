@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+/**
+ * Optional local pre-commit. Enable with:
+ *   git config core.hooksPath .githooks
+ */
+const { spawnSync } = require('node:child_process')
+const result = spawnSync('npm', ['run', 'verify'], {
+  stdio: 'inherit',
+  shell: true,
+})
+process.exit(result.status ?? 1)

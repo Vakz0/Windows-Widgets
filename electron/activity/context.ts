@@ -10,9 +10,9 @@ import type {
   ActivityBrowserDetail,
   ActivityCategory,
   ActivityContextKind,
-} from '../shared/types'
-import { normalizeDomain } from '../shared/domain'
-import { normalizeYoutubePageTitle, stripBrowserAppSuffix } from '../shared/youtubeVideo'
+} from '../../shared/types'
+import { normalizeDomain } from '../../shared/domain'
+import { normalizeYoutubePageTitle, stripBrowserAppSuffix } from '../../shared/youtubeVideo'
 
 export { normalizeDomain }
 

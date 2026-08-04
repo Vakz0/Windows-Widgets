@@ -51,7 +51,7 @@
   justify-content: center;
   border-radius: var(--radius-control);
   border: 1px solid var(--border-subtle);
-  background: var(--monitor-surface);
+  background: var(--surface);
   color: var(--text-62);
   font-size: 18px;
   line-height: 1;
@@ -102,7 +102,7 @@
 
 .activity-live.is-paused {
   color: var(--text-55);
-  background: var(--monitor-surface);
+  background: var(--surface);
   border-color: var(--border-subtle);
 }
 
@@ -157,8 +157,8 @@
 .activity-hero {
   padding: 10px 12px;
   border-radius: var(--radius-card);
-  background: var(--monitor-surface);
-  border: 1px solid var(--monitor-surface-border);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
 }
 
 .activity-hero-total {
@@ -309,7 +309,7 @@
 .activity-cat-track {
   height: 6px;
   border-radius: var(--radius-pill);
-  background: var(--monitor-track);
+  background: var(--track);
   overflow: hidden;
 }
 

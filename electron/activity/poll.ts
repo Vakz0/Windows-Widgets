@@ -12,14 +12,14 @@ import {
   domainFromBrowserTitle,
   fetchBrowserUrl,
   parseIdeOrChatTitle,
-} from '../activityContext'
+} from './context'
 import {
   ensureFocusSessionLoaded,
   evaluateFocusGuard,
   getFocusAttribution,
   hasFocusSession,
-} from '../focusSession'
-import { isMediaKeepAwakeActive } from '../activityMediaBridge'
+} from '../focus'
+import { isMediaKeepAwakeActive } from './mediaBridge'
 import { classify, isIgnoredApp, type ClassifyResult } from './classifier'
 import { DEFAULT_RULES, FLUSH_EVERY_POLLS, FOCUS_DWELL_MS } from './defaults'
 import { normalizeAppKey } from './normalize'

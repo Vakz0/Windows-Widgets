@@ -5,7 +5,7 @@ import type {
   NotionPropertyOption,
   TaskPropertyMapping,
 } from '../../shared/types'
-import { extractDatabaseId } from '../config'
+import { extractDatabaseId } from '../../shared/notionIds'
 import { DEMO_DATABASE_ID, DEMO_OPTIONS, toOptionList } from './demo'
 import { richTextArrayToPlain } from './parse'
 

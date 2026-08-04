@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react'
 import type { NotionTask } from '../vite-env'
+import { startFocusForTask } from './startFocusForTask'
 
 export type TaskContextMenuState = {
   task: NotionTask
@@ -106,17 +107,9 @@ export function useTaskContextMenu({
   async function handleStartFocus(task: NotionTask) {
     setContextMenu(null)
     setActionError(null)
-    try {
-      const result = await window.lattice.startFocusSession({
-        notionTaskId: task.id,
-        notionTaskTitle: task.title,
-        databaseId: task.databaseId,
-      })
-      if (!result.ok) {
-        setActionError(result.message ?? 'Impossible de démarrer la session focus.')
-      }
-    } catch (err) {
-      setActionError(String(err))
+    const result = await startFocusForTask(task)
+    if (!result.ok) {
+      setActionError(result.message ?? 'Impossible de démarrer la session focus.')
     }
   }
 

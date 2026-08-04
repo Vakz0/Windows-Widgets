@@ -4,7 +4,7 @@ import type {
   ActivityCorrectionScope,
   ActivityDaySummary,
 } from '../../shared/types'
-import { categoryFromDomain, normalizeDomain } from '../activityContext'
+import { categoryFromDomain, normalizeDomain } from './context'
 import { titlePatternFromSample } from './classifier'
 import { CATEGORIES } from './defaults'
 import { normalizeAppKey } from './normalize'

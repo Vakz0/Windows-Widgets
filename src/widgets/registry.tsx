@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import { CalendarWidget } from './CalendarWidget'
 import { TasksWidget } from './TasksWidget'
-import { MonitorWidget } from './MonitorWidget'
 import { ActivityWidget } from './ActivityWidget'
 import { CatalogWidget } from './CatalogWidget'
 import { FocusInterruptWidget } from './FocusInterruptWidget'
@@ -14,7 +13,6 @@ import { FocusInterruptWidget } from './FocusInterruptWidget'
 const widgetComponents: Record<string, ComponentType> = {
   calendar: CalendarWidget,
   tasks: TasksWidget,
-  monitor: MonitorWidget,
   activity: ActivityWidget,
   catalog: CatalogWidget,
   'focus-interrupt': FocusInterruptWidget,

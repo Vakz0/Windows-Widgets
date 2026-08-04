@@ -1,0 +1,15 @@
+# Blockers
+
+Open items that block correct work or docs/code sync. Remove or mark resolved with a date when done.
+
+## Open
+
+- **Orphan services UX** — `system-stats` / `temp-daemon` have no builtin widget after Monitor removal; tray/stats paths still reference them (`electron/system.ts`). Confirm intended behavior for installs with no external monitor widget.
+- **Authenticode** — release builds unsigned; SmartScreen may warn (known, see development docs).
+- **Electron major upgrade** — still on Electron 33; npm audit reports high advisories fixed only in newer majors (path to 43 is breaking). Schedule a dedicated upgrade.
+
+## Resolved
+
+- **2026-08-04 — Migration shims** — deleted unused `@deprecated` root re-exports (`focusSession.ts`, `focusInterruptWindow.ts`, `activityContext.ts`, `activityMediaBridge.ts`).
+- **2026-08-04 — CI / verify gate** — `.github/workflows/ci.yml` + `npm run verify`; release workflow runs verify before publish.
+- **2026-08-04 — electron-builder / tar** — upgraded to electron-builder 26; runtime `npm audit --omit=dev` clean.

@@ -20,7 +20,7 @@
   align-items: center;
   padding: 8px 10px;
   border-radius: var(--radius-card-sm);
-  background: var(--monitor-surface);
+  background: var(--surface);
   border: 1px solid var(--border-subtle);
 }
 
@@ -71,7 +71,7 @@
 }
 
 .activity-btn-ghost {
-  background: var(--monitor-surface);
+  background: var(--surface);
   border-color: var(--border-subtle);
   color: var(--text-62);
 }
@@ -114,7 +114,7 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: var(--radius-card, 10px);
-  background: var(--monitor-surface);
+  background: var(--surface);
   border: 1px solid var(--border-subtle);
 }
 
@@ -193,7 +193,7 @@
 .activity-journal-row {
   padding: 8px 10px;
   border-radius: var(--radius-card, 10px);
-  background: var(--monitor-surface);
+  background: var(--surface);
   border: 1px solid var(--border-subtle);
 }
 
@@ -287,7 +287,7 @@
   padding: 8px 10px;
   border-radius: var(--radius-control);
   border: 1px solid var(--border-subtle);
-  background: var(--monitor-surface);
+  background: var(--surface);
   color: var(--text);
   font-family: inherit;
 }
@@ -337,10 +337,7 @@
 
   .skeleton,
   .spinner,
-  .cal-loading-dot,
-  .monitor-live-dot,
-  .monitor-gauge.tone-loading .monitor-ring-track,
-  .monitor-gauge.tone-loading .monitor-ring-value {
+  .cal-loading-dot {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }

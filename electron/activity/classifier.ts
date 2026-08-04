@@ -4,7 +4,7 @@ import type {
   ActivityConfidence,
   ActivityRules,
 } from '../../shared/types'
-import { categoryFromDomain } from '../activityContext'
+import { categoryFromDomain } from './context'
 import { normalizeAppKey } from './normalize'
 
 export type ClassifyResult = {

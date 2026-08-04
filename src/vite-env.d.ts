@@ -33,7 +33,6 @@ export type {
   ActivityBrowserDetail,
   ActivityCategory,
   ActivityConfidence,
-  ActivityContextKind,
   ActivityCorrectionPayload,
   ActivityCorrectionResult,
   ActivityCorrectionScope,
@@ -114,7 +113,6 @@ export interface LatticeApi {
   onCatalogMaximizedChanged: (cb: (maximized: boolean) => void) => () => void
   onCatalogNavigate: (cb: (view: CatalogView) => void) => () => void
   openExternal: (url: string) => Promise<void>
-  hideMonitor: () => Promise<void>
   enableTemp: () => Promise<{ ok: boolean; message: string }>
   disableTemp: () => Promise<{ ok: boolean; message: string }>
   getActivitySummary: (date?: string) => Promise<ActivityDaySummary>

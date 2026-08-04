@@ -10,7 +10,7 @@ import type {
   UpdateTaskFieldPayload,
   UpdateTaskFieldResult,
 } from '../../shared/types'
-import { extractDatabaseId } from '../config'
+import { extractDatabaseId } from '../../shared/notionIds'
 import { errorMessage } from './client'
 import {
   DEMO_DATABASE_ID,
@@ -31,7 +31,8 @@ function richTextValue(text: string | null) {
   return [{ type: 'text' as const, text: { content: text } }]
 }
 
-function buildPropertyWrite(
+/** Pure property payload builder — exported for unit tests. */
+export function buildPropertyWrite(
   type: string,
   value: string | boolean | null,
 ): Record<string, unknown> | null {

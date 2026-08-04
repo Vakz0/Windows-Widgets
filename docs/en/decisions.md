@@ -21,13 +21,17 @@ Short log of lasting choices. Add a row when you change an invariant; do not rew
 | D13 | 2025 | **Demo mode** when Notion token missing/placeholder. | App usable without credentials. | Active |
 | D14 | 2026 | **Notion ID parsing** in `shared/notionIds.ts`; Notion domain must not import config persistence. | Testable pure helpers; no UI/config coupling. | Active |
 | D15 | 2026 | **Path confinement** for activity/focus files via `resolveWithin` / `assertWithin`. | Mitigate path traversal on user-controlled segments. | Active |
-| D16 | 2026 | **No ESLint/Prettier** in-repo; gate = `tsc --strict` + Vitest + `npm run build`. | Keep tooling light on a solo/small project. | Active |
+| D16 | 2026 | **No ESLint/Prettier** in-repo; gate = `tsc --strict` + Vitest via `npm run verify` (+ CI on PR/release). | Keep tooling light on a solo/small project; still block regressions in CI. | Active |
 | D17 | 2025 | **Docs slim-down** — drop long architecture/brand/configuration pages; keep README + Notion/Activity/Development. Decision log restored here (2026). | Long docs drifted; short guides + this log preferred. | Active |
-| D18 | 2026 | **Deprecated root re-exports** (`electron/focusSession.ts`, …) during domain extraction — thin `@deprecated` shims only; do not add logic there. | Safe migration without breaking imports mid-refactor. | Temporary |
+| D18 | 2026 | **Deprecated root re-exports** during domain extraction. | Safe migration mid-refactor. | **Superseded by D21** — shims deleted 2026-08-04 |
 | D19 | 2025 | **Bilingual docs** EN + FR for product/contributor guides. | Author + French users; keep both in sync when editing. | Active |
 | D20 | 2025 | **`app.disableHardwareAcceleration()`** + power-mode aware refresh intervals. | Mostly-static desktop widgets; reduce Chromium cost on Windows. | Active |
+| D21 | 2026-08-04 | **Remove unused `@deprecated` electron root shims**; import domains directly. | Shims had zero remaining imports. | Active |
+| D22 | 2026-08-04 | **Shared pure helpers** `shared/dates.ts` + `shared/errors.ts`; UI focus start via `startFocusForTask`. | Kill date/error/start-focus duplication. | Active |
+| D23 | 2026-08-04 | **Design tokens** renamed `--monitor-*` → `--surface` / `--glow-*` / `soft-pulse` (Monitor widget gone). | Naming matched a deleted feature. | Active |
+| D24 | 2026-08-04 | **electron-builder 26**; Electron major (33→43) deferred. | Clear critical `tar`/builder advisories without a Chromium jump in the same change. | Active |
 
 ## How to add an entry
 
 1. Next free `Dxx` id, today’s date, one-line decision, one-line why, `Active` / `Superseded by Dyy` / `Temporary`.
-2. If a rule becomes day-to-day guidance for agents, mirror it in `CLAUDE.md` or `.claude/rules/`.
+2. If a rule becomes day-to-day guidance for agents, mirror it in `CLAUDE.md` or `.cursor/rules/`.

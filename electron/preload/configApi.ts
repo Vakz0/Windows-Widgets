@@ -36,7 +36,6 @@ export function createConfigApi() {
 export function createShellApi() {
   return {
     openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
-    hideMonitor: (): Promise<void> => ipcRenderer.invoke('hide-monitor'),
     enableTemp: (): Promise<{ ok: boolean; message: string }> =>
       ipcRenderer.invoke('enable-temp'),
     disableTemp: (): Promise<{ ok: boolean; message: string }> =>

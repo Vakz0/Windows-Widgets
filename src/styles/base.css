@@ -29,12 +29,12 @@
   --status-ok-border: rgba(125, 186, 149, 0.28);
   --status-ok-text: #c8e6d3;
   --status-ok-bg-hover: rgba(125, 186, 149, 0.18);
-  --monitor-glow-a: rgba(90, 140, 120, 0.12);
-  --monitor-glow-b: rgba(50, 70, 90, 0.18);
-  --monitor-surface: rgba(255, 255, 255, 0.03);
-  --monitor-surface-border: rgba(255, 255, 255, 0.04);
-  --monitor-track: rgba(255, 255, 255, 0.08);
-  --monitor-muted-stroke: rgba(255, 255, 255, 0.18);
+  --glow-a: rgba(90, 140, 120, 0.12);
+  --glow-b: rgba(50, 70, 90, 0.18);
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-border: rgba(255, 255, 255, 0.04);
+  --track: rgba(255, 255, 255, 0.08);
+  --muted-stroke: rgba(255, 255, 255, 0.18);
   --text-45: rgba(241, 241, 239, 0.45);
   --text-55: rgba(241, 241, 239, 0.55);
   --text-62: rgba(241, 241, 239, 0.62);
@@ -42,9 +42,9 @@
   --text-38: rgba(241, 241, 239, 0.38);
   --text-35: rgba(241, 241, 239, 0.35);
   --text-32: rgba(241, 241, 239, 0.32);
-  --shadow-monitor: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --shadow-elevated: 0 18px 40px rgba(0, 0, 0, 0.45);
   --radius-shell: 14px;
-  --radius-monitor: 18px;
+  --radius-panel: 18px;
   --radius-card: 12px;
   --radius-card-sm: 10px;
   --radius-control: 8px;
@@ -152,5 +152,15 @@ button {
   background: var(--danger-bg);
   color: var(--danger-text-soft);
   font-size: 12px;
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
 }
 

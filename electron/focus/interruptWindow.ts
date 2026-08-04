@@ -1,17 +1,14 @@
 import { BrowserWindow, screen } from 'electron'
-import type { FocusInterruptContext } from '../shared/types'
-import { refreshActivitySummary } from './activity'
-import {
-  getFocusSession,
-  setFocusSessionListeners,
-} from './focusSession'
-import { broadcastToAllWindows } from './notify'
+import type { FocusInterruptContext } from '../../shared/types'
+import { refreshActivitySummary } from '../activity'
+import { getFocusSession, setFocusSessionListeners } from './session'
+import { broadcastToAllWindows } from '../notify'
 import {
   appIconPath,
   applyWindowIcon,
   defaultWebPreferences,
   loadRendererWidget,
-} from './windows/helpers'
+} from '../windows/helpers'
 
 export function createFocusInterruptController() {
   let focusInterruptWindow: BrowserWindow | null = null

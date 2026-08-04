@@ -7,7 +7,7 @@ import {
   focusUrlAllowlistKey,
   youtubeTitleAllowlistKey,
 } from '../../shared/youtubeVideo'
-import { BROWSER_APPS, normalizeDomain } from '../activityContext'
+import { BROWSER_APPS, normalizeDomain } from './context'
 import { normalizeAppKey } from './normalize'
 
 function normalizeProject(name: string): string {

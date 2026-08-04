@@ -1,16 +1,16 @@
 # Lattice — notes agent
 
-Instructions projet partagées (versionnées). Préférences personnelles : `CLAUDE.local.md` (gitignored).
-Règles path-scopées : `.claude/rules/`. Mémoire projet : `.claude/memory/`.
-Décisions : `@docs/en/decisions.md`.
+Same constitution as `.cursor/rules/CURSOR.mdc` (Cursor always-apply). Keep both in sync when editing invariants.
 
 ## Verify after changes
 
 ```bash
-npm test                          # Vitest — must stay green
-npx tsc -p tsconfig.json --noEmit # shared + src types
-npm run build                     # full gate before shipping (helpers + tsc + vite)
+npm run verify   # Vitest + tsc (preferred)
+npm test         # focused loops
+npm run build    # full gate before shipping (helpers + tsc + vite)
 ```
+
+CI runs `npm run verify` on PRs/pushes and before release publish. Optional local hook: `git config core.hooksPath .githooks`.
 
 Prefer `npm test` for focused loops. No ESLint/Prettier — TypeScript `strict` is the gate.
 
@@ -18,11 +18,12 @@ Prefer `npm test` for focused loops. No ESLint/Prettier — TypeScript `strict` 
 
 - Prefer **domain folders** (`electron/activity/`, `electron/focus/`, `electron/notion/`, …) over growing root god files.
 - Do **not** dump new shared contracts into a single mega-`types` file; add/keep domain modules under `shared/types/` and re-export from barrels.
+- Pure helpers shared by main + renderer live under `shared/` (`dates.ts`, `errors.ts`, `notionIds.ts`, `youtubeVideo.ts`, …).
 - Business logic must not depend on UI. Notion helpers must not import app config persistence — use `shared/notionIds.ts`.
 - Keep `electron/main.ts` as composition/bootstrap only; extract feature wiring into modules (`bootstrap/`, `ipc/`, domains).
 - Renderer talks to main only via `window.lattice` (preload), never by importing `electron/`.
 - New IPC: `electron/ipc/<domain>Ipc.ts` + `electron/preload/<domain>Api.ts` + `src/vite-env.d.ts` — not inline in `main.ts`.
-- Root files marked `@deprecated` are thin re-exports during migration; import from the domain module, do not grow the deprecated file.
+- Start a Notion focus session from the UI via `src/widgets/startFocusForTask.ts` (do not duplicate the IPC payload).
 
 ## Layout
 
@@ -31,6 +32,7 @@ Prefer `npm test` for focused loops. No ESLint/Prettier — TypeScript `strict` 
 - `shared/` — types (`shared/types/`) and pure helpers shared by both processes
 - `extensions/` — browser extension (media bridge)
 - `docs/` — product + contributor guides (EN/FR) + decisions log
+- `.cursor/` — Cursor rules + versioned project memory
 
 ## Product invariants
 
@@ -48,4 +50,4 @@ Prefer `npm test` for focused loops. No ESLint/Prettier — TypeScript `strict` 
 | Activity | `docs/en/activity.md` | `docs/fr/activity.md` |
 | Notion | `docs/en/notion.md` | `docs/fr/notion.md` |
 
-When you correct a recurring mistake or discover a durable insight, append a dated note to `.claude/memory/LEARNINGS.md`. Active blockers → `.claude/memory/BLOCKERS.md`.
+When you correct a recurring mistake or discover a durable insight, append a dated note to `.cursor/memory/LEARNINGS.mdc`. Active blockers → `.cursor/memory/BLOCKERS.mdc`.

@@ -10,7 +10,7 @@ import {
 } from '../../shared/youtubeVideo'
 import type { FocusAllowlist } from '../../shared/types'
 import { isOnFocusAllowlist } from './focusAllowlist'
-import { domainFromBrowserTitle } from '../activityContext'
+import { domainFromBrowserTitle } from './context'
 
 describe('extractYoutubeVideoId', () => {
   it('extracts watch?v=', () => {

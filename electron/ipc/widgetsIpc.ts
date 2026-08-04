@@ -41,9 +41,6 @@ export function registerWidgetsIpc(deps: IpcDeps): void {
   ipcMain.handle('open-external', async (_e, url: string) => {
     if (url) await shell.openExternal(url)
   })
-  ipcMain.handle('hide-monitor', () => {
-    deps.hideMonitor()
-  })
   ipcMain.handle('install-widget', (_e, id: string) => {
     if (!id || typeof id !== 'string') {
       return { ok: false, message: 'Id widget invalide.' }

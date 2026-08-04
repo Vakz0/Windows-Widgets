@@ -9,7 +9,7 @@ export function registerStatsIpc(deps: IpcDeps): void {
   })
   ipcMain.handle('enable-temp', async () => {
     if (!deps.hasService('temp-daemon')) {
-      return { ok: false, message: 'Activez le widget Monitoring pour utiliser la température.' }
+      return { ok: false, message: 'Aucun widget n’expose le service température (temp-daemon).' }
     }
     return startTempDaemonElevated()
   })

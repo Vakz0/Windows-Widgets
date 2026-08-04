@@ -19,19 +19,16 @@ export interface TrayMenuDeps {
   setStats: (stats: SystemStats | null) => void
   getEnabledDesktopWidgets: () => TrayDesktopWidget[]
   isWidgetVisible: (id: string) => boolean
-  isMonitorEnabled: () => boolean
   hasNotionWidgets: () => boolean
   hasTempDaemon: () => boolean
   showWidget: (id: string) => void
   hideWidget: (id: string) => void
-  toggleMonitor: () => void
   openCatalog: () => void
   openSettings: () => void
   applyPowerMode: () => void
   applyLaunchAtStartup: () => void
   refreshNotion: (force?: boolean) => Promise<unknown>
   refreshStats: (forceTemp?: boolean) => Promise<unknown>
-  sendStatsToMonitor: (stats: SystemStats) => void
   updateTrayTooltip: () => void
 }
 
@@ -60,7 +57,6 @@ export function createTrayMenuController(
   async function build() {
     const config = deps.getConfig()
     const desktop = deps.getEnabledDesktopWidgets()
-    const monitorEnabled = deps.isMonitorEnabled()
     const notionEnabled = deps.hasNotionWidgets()
     const tempDaemon = deps.hasTempDaemon()
     const tempRunning = await isTempServiceRunning()
@@ -76,7 +72,7 @@ export function createTrayMenuController(
       },
     ]
 
-    if (desktop.length > 0 || monitorEnabled) {
+    if (desktop.length > 0) {
       template.push({ type: 'separator' })
     }
 
@@ -93,13 +89,6 @@ export function createTrayMenuController(
           }
           keepOpen()
         },
-      })
-    }
-
-    if (monitorEnabled) {
-      template.push({
-        label: 'Monitoring',
-        click: () => deps.toggleMonitor(),
       })
     }
 
@@ -125,7 +114,6 @@ export function createTrayMenuController(
               if (stats) {
                 const next = { ...stats, temperatureC: null, tempSource: null }
                 deps.setStats(next)
-                deps.sendStatsToMonitor(next)
               }
               deps.updateTrayTooltip()
               await dialog.showMessageBox({

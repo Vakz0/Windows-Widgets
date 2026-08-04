@@ -17,6 +17,15 @@ Config dev : copier `config.example.json` → `config.json` à la racine.
 
 Invariants agent / contributeur : [`CLAUDE.md`](../../CLAUDE.md) · décisions : [`docs/fr/decisions.md`](decisions.md).
 
+### Gates qualité
+
+```bash
+npm run verify   # vitest + tsc (aussi en CI sur PR/push et avant release)
+npm run build    # helpers + tsc + vite
+```
+
+Pre-commit local optionnel : `git config core.hooksPath .githooks` (lance `npm run verify`).
+
 ## Arborescence
 
 ```
@@ -33,7 +42,8 @@ shared/             # Types partagés (types/) + helpers purs
 extensions/         # Extension navigateur (media bridge)
 tools/cpu-temp/ tools/active-url/
 docs/               # Guides (EN/FR) + journal de décisions
-.claude/            # Règles agent + mémoire projet versionnée
+.cursor/            # Règles Cursor + mémoire projet versionnée
+.githooks/          # Pre-commit optionnel (verify)
 ```
 
 Préférer les dossiers métier aux fichiers racine trop gros. Les `electron/*.ts` racine marqués `@deprecated` sont des shims de migration — importer depuis le module domaine.

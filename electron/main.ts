@@ -2,26 +2,19 @@ import {
   app,
   BrowserWindow,
   Tray,
-  nativeImage,
 } from 'electron'
 import path from 'node:path'
-import fs from 'node:fs'
 import { migrateLegacyUserData } from './migrate'
 import {
-  getConfigPath,
   loadConfig,
-  isWidgetEnabledInConfig,
-  hasValidNotionCredentials,
   getUpdatesConfig,
   setUpdatesConfig,
 } from './config'
-import { fetchNotionTasks } from './notion'
-import { getSystemStats, isTempServiceRunning } from './system'
+import { getSystemStats } from './system'
 import { isActivityTrackerRunning, stopActivityTracker } from './activity'
 import { createTrayMenuController } from './trayMenu'
 import {
   getAllWidgetDefinitions,
-  getAllWidgetDefinitionsCached,
   getDesktopWidgetDefinitionsCached,
 } from './widgets/registry'
 import {
@@ -34,19 +27,15 @@ import {
   initWidgetUpdater,
 } from './widgetUpdates'
 import { registerAllIpc } from './ipc'
-import { createFocusInterruptController } from './focusInterruptWindow'
+import { createFocusInterruptController } from './focus/interruptWindow'
 import { createPowerModeController } from './powerMode'
 import { createWidgetLifecycle } from './widgets/lifecycle'
 import { createCatalogWindowController } from './windows/catalogWindow'
 import { createWidgetWindowController } from './windows/createWidgetWindow'
-import { resolveAsset } from './windows/helpers'
-import type {
-  AppConfig,
-  NotionTask,
-  PublicConfig,
-  SystemStats,
-} from '../shared/types'
-import type { WidgetServiceId } from '../shared/widget'
+import { toPublicConfig } from './bootstrap/publicConfig'
+import { createRefreshControllers } from './bootstrap/refresh'
+import { createTrayIcon, updateTrayTooltip } from './bootstrap/tray'
+import type { AppConfig, NotionTask, SystemStats } from '../shared/types'
 
 // Lower Chromium cost for mostly-static widgets
 app.setName('lattice-desk')
@@ -57,49 +46,42 @@ let config: AppConfig
 let tray: Tray | null = null
 let tasksCache: NotionTask[] = []
 let statsCache: SystemStats | null = null
-let monitorVisible = false
-let notionInFlight = false
-let statsInFlight = false
-let lastNotionAt = 0
 let sleeping = false
 
 const windows: Partial<Record<string, BrowserWindow>> = {}
 
-function isEnabled(id: string): boolean {
-  return isWidgetEnabledInConfig(config, id)
-}
+type PowerController = ReturnType<typeof createPowerModeController>
+const powerRef: { current: PowerController | null } = { current: null }
 
-function enabledDefsForService(service: WidgetServiceId) {
-  return getAllWidgetDefinitionsCached().filter(
-    (d) => isEnabled(d.id) && d.services.includes(service),
-  )
-}
+const refresh = createRefreshControllers({
+  getConfig: () => config,
+  windows,
+  getTasksCache: () => tasksCache,
+  setTasksCache: (tasks) => {
+    tasksCache = tasks
+  },
+  getStatsCache: () => statsCache,
+  setStatsCache: (stats) => {
+    statsCache = stats
+  },
+  getPowerMode: () => powerRef.current?.getPowerMode() ?? 'active',
+  notionIntervalMs: () => powerRef.current?.notionIntervalMs() ?? 90_000,
+  onStatsUpdated: () => updateTrayTooltip(tray, statsCache),
+})
 
-function hasService(service: WidgetServiceId): boolean {
-  return enabledDefsForService(service).length > 0
-}
-
-function notionWidgetIds(): string[] {
-  return enabledDefsForService('notion').map((d) => d.id)
-}
-
-function activityWidgetIds(): string[] {
-  return enabledDefsForService('activity-tracker').map((d) => d.id)
-}
-
-function sendTo(ids: string[], channel: string, payload: unknown): void {
-  for (const id of ids) {
-    const win = windows[id]
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(channel, payload)
-    }
-  }
-}
+const {
+  isEnabled,
+  hasService,
+  notionWidgetIds,
+  activityWidgetIds,
+  sendTo,
+  refreshNotion,
+  refreshStats,
+} = refresh
 
 const power = createPowerModeController({
   getConfig: () => config,
   windows,
-  getMonitorVisible: () => monitorVisible,
   getSleeping: () => sleeping,
   setSleeping: (v) => {
     sleeping = v
@@ -108,6 +90,7 @@ const power = createPowerModeController({
   refreshNotion,
   refreshStats,
 })
+powerRef.current = power
 
 const widgetWindows = createWidgetWindowController({
   getConfig: () => config,
@@ -115,10 +98,6 @@ const widgetWindows = createWidgetWindowController({
     config = next
   },
   windows,
-  getMonitorVisible: () => monitorVisible,
-  setMonitorVisible: (v) => {
-    monitorVisible = v
-  },
   applyPowerMode: (force) => power.applyPowerMode(force),
   hasService,
   refreshStats,
@@ -137,9 +116,6 @@ const lifecycle = createWidgetLifecycle({
   isEnabled,
   hasService,
   createWidgetWindow: widgetWindows.createWidgetWindow,
-  setMonitorVisible: (v) => {
-    monitorVisible = v
-  },
   getTasksCache: () => tasksCache,
   setTasksCache: (tasks) => {
     tasksCache = tasks
@@ -150,56 +126,11 @@ const lifecycle = createWidgetLifecycle({
   activityWidgetIds,
 })
 
-function createTrayIcon(): Electron.NativeImage {
-  const candidates = [
-    resolveAsset('assets', 'tray.png'),
-    resolveAsset('assets', 'tray-16.png'),
-    resolveAsset('assets', 'icon.png'),
-  ]
-  for (const iconFile of candidates) {
-    if (fs.existsSync(iconFile)) {
-      const img = nativeImage.createFromPath(iconFile)
-      if (!img.isEmpty()) {
-        return img.resize({ width: 16, height: 16, quality: 'best' })
-      }
-    }
-  }
-  const png = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMElEQVQ4T2NkYGD4z0ABYBzVMKoB' +
-      'BgZGRgYGBgYGRgYGBgYAwv4CAf1yQ9kAAAAASUVORK5CYII=',
-    'base64',
-  )
-  return nativeImage.createFromBuffer(png)
-}
-
-function updateTrayTooltip(): void {
-  if (!tray) return
-  if (!statsCache) {
-    tray.setToolTip('Lattice')
-    return
-  }
-  const cached = statsCache
-  void isTempServiceRunning().then((running) => {
-    if (!tray || statsCache !== cached) return
-    let temp: string
-    if (cached.temperatureC !== null && cached.temperatureC !== undefined) {
-      temp = `${cached.temperatureC}°C`
-    } else if (running) {
-      temp = 'temp. …'
-    } else {
-      temp = 'temp. arrêtée'
-    }
-    tray.setToolTip(
-      `CPU ${cached.cpuPercent}% · RAM ${cached.ramPercent}% · ${temp}`,
-    )
-  })
-}
-
 let trayMenu: ReturnType<typeof createTrayMenuController> | null = null
 
 function setupTray(): void {
   tray = new Tray(createTrayIcon())
-  updateTrayTooltip()
+  updateTrayTooltip(tray, statsCache)
 
   trayMenu = createTrayMenuController(() => tray, {
     getConfig: () => config,
@@ -215,25 +146,21 @@ function setupTray(): void {
         .filter((d) => isEnabled(d.id))
         .map((d) => ({ id: d.id, label: d.label })),
     isWidgetVisible: widgetWindows.isWidgetVisible,
-    isMonitorEnabled: () => isEnabled('monitor'),
     hasNotionWidgets: () => hasService('notion'),
     hasTempDaemon: () => hasService('temp-daemon'),
     showWidget: widgetWindows.showWidget,
     hideWidget: widgetWindows.hideWidget,
-    toggleMonitor: widgetWindows.toggleMonitor,
     openCatalog: catalog.openCatalog,
     openSettings: () => catalog.openCatalog({ view: 'settings' }),
     applyPowerMode: () => power.applyPowerMode(),
     applyLaunchAtStartup,
     refreshNotion,
     refreshStats,
-    sendStatsToMonitor: (stats) => sendTo(['monitor'], 'stats-updated', stats),
-    updateTrayTooltip,
+    updateTrayTooltip: () => updateTrayTooltip(tray, statsCache),
   })
 
   tray.on('click', () => {
-    if (isEnabled('monitor')) widgetWindows.toggleMonitor()
-    else catalog.openCatalog()
+    catalog.openCatalog()
   })
   tray.on('right-click', (_event, bounds) => {
     trayMenu?.popupAt(bounds)
@@ -246,68 +173,6 @@ function applyLaunchAtStartup(): void {
     path: process.execPath,
     args: app.isPackaged ? [] : [path.resolve(process.argv[1] ?? '.')],
   })
-}
-
-async function refreshNotion(force = false): Promise<NotionTask[]> {
-  if (!hasService('notion')) return tasksCache
-  if (notionInFlight) return tasksCache
-  if (!force && power.getPowerMode() === 'sleep' && tasksCache.length > 0) {
-    return tasksCache
-  }
-
-  const minGap = force ? 0 : power.notionIntervalMs() * 0.8
-  if (!force && Date.now() - lastNotionAt < minGap) {
-    return tasksCache
-  }
-
-  notionInFlight = true
-  try {
-    tasksCache = await fetchNotionTasks(config)
-    lastNotionAt = Date.now()
-    sendTo(notionWidgetIds(), 'tasks-updated', tasksCache)
-  } catch (err) {
-    console.error('Notion sync failed', err)
-    sendTo(notionWidgetIds(), 'tasks-error', String(err))
-  } finally {
-    notionInFlight = false
-  }
-  return tasksCache
-}
-
-async function refreshStats(forceTemp = false): Promise<SystemStats> {
-  if (statsInFlight) return statsCache as SystemStats
-  statsInFlight = true
-  try {
-    statsCache = await getSystemStats({
-      includeTemp: forceTemp || monitorVisible,
-    })
-    updateTrayTooltip()
-    if (monitorVisible && isEnabled('monitor')) {
-      sendTo(['monitor'], 'stats-updated', statsCache)
-    }
-  } finally {
-    statsInFlight = false
-  }
-  return statsCache
-}
-
-function toPublicConfig(): PublicConfig {
-  return {
-    refreshIntervalSeconds: config.refreshIntervalSeconds,
-    demoMode: config.demoMode,
-    configPath: getConfigPath(),
-    launchAtStartup: config.launchAtStartup,
-    notionConfigured: hasValidNotionCredentials(config),
-    notionTokenStored: Boolean(config.notionToken?.trim()),
-    databaseId: config.databaseId ?? '',
-    properties: { ...config.properties },
-    filters: {
-      hideCompleted: config.filters.hideCompleted,
-      completedStatusValues: [...(config.filters.completedStatusValues ?? [])],
-    },
-    projectSourcesCount: config.projectSources?.length ?? 0,
-    updates: getUpdatesConfig(config),
-  }
 }
 
 function registerIpc(): void {
@@ -324,7 +189,7 @@ function registerIpc(): void {
     hasService,
     refreshNotion,
     refreshStats,
-    toPublicConfig,
+    toPublicConfig: () => toPublicConfig(config),
     applyLaunchAtStartup,
     applyPowerMode: power.applyPowerMode,
     applyAutoDownload,
@@ -332,9 +197,6 @@ function registerIpc(): void {
     setWidgetEnabledState: lifecycle.setWidgetEnabledState,
     openCatalog: catalog.openCatalog,
     getCatalogWindow: catalog.getCatalogWindow,
-    hideMonitor: () => {
-      windows.monitor?.hide()
-    },
     hideFocusInterruptWindow: focusInterrupt.hideFocusInterruptWindow,
     notionWidgetIds,
     sendTo,

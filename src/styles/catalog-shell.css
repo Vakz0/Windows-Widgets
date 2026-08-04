@@ -6,8 +6,8 @@
   padding: 0;
   overflow: hidden;
   background:
-    radial-gradient(110% 70% at 0% 0%, var(--monitor-glow-a), transparent 55%),
-    radial-gradient(90% 60% at 100% 100%, var(--monitor-glow-b), transparent 50%),
+    radial-gradient(110% 70% at 0% 0%, var(--glow-a), transparent 55%),
+    radial-gradient(90% 60% at 100% 100%, var(--glow-b), transparent 50%),
     var(--bg);
 }
 
@@ -354,14 +354,14 @@
   font-weight: 550;
   padding: 2px 7px;
   border-radius: 6px;
-  background: var(--monitor-surface);
-  border: 1px solid var(--monitor-surface-border);
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
   color: var(--muted);
 }
 
 .catalog-badge-muted {
-  background: var(--monitor-surface);
-  border-color: var(--monitor-surface-border);
+  background: var(--surface);
+  border-color: var(--surface-border);
   color: var(--muted);
 }
 
@@ -407,7 +407,7 @@
   width: 36px;
   height: 20px;
   border-radius: var(--radius-pill);
-  background: var(--monitor-track);
+  background: var(--track);
   border: 1px solid var(--border-subtle);
   transition:
     background 0.15s ease,

@@ -94,7 +94,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--status-live);
-  animation: monitor-pulse 1.4s ease-in-out infinite;
+  animation: soft-pulse 1.4s ease-in-out infinite;
 }
 
 .cal-card-skeleton {

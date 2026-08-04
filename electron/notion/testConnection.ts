@@ -3,7 +3,7 @@ import type {
   NotionConnectionTestResult,
   NotionDatabasePropertyInfo,
 } from '../../shared/types'
-import { extractDatabaseId } from '../config'
+import { extractDatabaseId } from '../../shared/notionIds'
 import { errorMessage } from './client'
 import { databaseTitle, suggestPropertyMapping } from './properties'
 
